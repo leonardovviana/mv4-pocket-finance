@@ -10,6 +10,7 @@ import { IOSTabBar } from "@/components/IOSTabBar";
 
 // Pages
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import MelhoresDoAno from "./pages/MelhoresDoAno";
 import GestaoMidias from "./pages/GestaoMidias";
 import PremioExcelencia from "./pages/PremioExcelencia";
@@ -34,7 +35,8 @@ const App = () => (
             <div className="min-h-screen bg-background">
               <Routes>
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/" element={<ProtectedRoute><MelhoresDoAno /></ProtectedRoute>} />
+                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/melhores" element={<ProtectedRoute><MelhoresDoAno /></ProtectedRoute>} />
                 <Route path="/midias" element={<ProtectedRoute><GestaoMidias /></ProtectedRoute>} />
                 <Route path="/premio" element={<ProtectedRoute><PremioExcelencia /></ProtectedRoute>} />
                 <Route path="/carro-som" element={<ProtectedRoute><CarroSom /></ProtectedRoute>} />

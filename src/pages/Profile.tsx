@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/components/ThemeProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { IOSPage } from '@/components/IOSPage';
 import { IOSCard } from '@/components/IOSCard';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Loader2, LogOut, User, Phone, Mail, ChevronLeft } from 'lucide-react';
+import { Camera, Loader2, LogOut, User, Phone, Mail, ChevronLeft, Sun, Moon, Monitor } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -20,6 +21,7 @@ interface Profile {
 
 export default function Profile() {
   const { user, signOut } = useAuth();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +96,6 @@ export default function Profile() {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
         title: 'Erro',
@@ -104,7 +105,6 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: 'Erro',
@@ -119,7 +119,6 @@ export default function Profile() {
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;
 
-    // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, { upsert: true });
@@ -134,12 +133,10 @@ export default function Profile() {
       return;
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
 
-    // Update profile with avatar URL
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ avatar_url: publicUrl })
@@ -171,6 +168,12 @@ export default function Profile() {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
+
+  const themeOptions = [
+    { value: 'light', label: 'Claro', icon: Sun },
+    { value: 'dark', label: 'Escuro', icon: Moon },
+    { value: 'system', label: 'Sistema', icon: Monitor },
+  ] as const;
 
   if (loading) {
     return (
@@ -262,6 +265,36 @@ export default function Profile() {
                 />
               </div>
             </div>
+          </div>
+        </IOSCard>
+
+        {/* Theme Selection */}
+        <IOSCard>
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-foreground">Aparência</Label>
+            <div className="flex gap-2">
+              {themeOptions.map((option) => {
+                const Icon = option.icon;
+                const isActive = theme === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setTheme(option.value)}
+                    className={`flex-1 flex flex-col items-center gap-2 py-3 px-4 rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-xs font-medium">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Tema atual: {resolvedTheme === 'dark' ? 'Escuro' : 'Claro'}
+            </p>
           </div>
         </IOSCard>
 

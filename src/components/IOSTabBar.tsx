@@ -8,7 +8,8 @@ import {
   Heart, 
   Briefcase, 
   Wallet,
-  User
+  User,
+  LayoutDashboard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,8 @@ interface TabItem {
 }
 
 const tabs: TabItem[] = [
-  { id: "melhores", label: "Melhores", icon: Trophy, path: "/" },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { id: "melhores", label: "Melhores", icon: Trophy, path: "/melhores" },
   { id: "midias", label: "Mídias", icon: Share2, path: "/midias" },
   { id: "premio", label: "Prêmio", icon: Award, path: "/premio" },
   { id: "carro", label: "Carro Som", icon: Volume2, path: "/carro-som" },
