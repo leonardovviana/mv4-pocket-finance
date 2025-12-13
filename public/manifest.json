@@ -1,0 +1,26 @@
+{
+  "name": "MV4 Financeiro",
+  "short_name": "MV4 Fin",
+  "description": "Aplicativo financeiro da Agência MV4 Comunicação e Marketing",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#007AFF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business"],
+  "lang": "pt-BR"
+}
