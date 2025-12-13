@@ -7,7 +7,8 @@ import {
   BookOpen, 
   Heart, 
   Briefcase, 
-  Wallet 
+  Wallet,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const tabs: TabItem[] = [
   { id: "saude", label: "Saúde", icon: Heart, path: "/saude" },
   { id: "servicos", label: "Serviços", icon: Briefcase, path: "/servicos" },
   { id: "despesas", label: "Despesas", icon: Wallet, path: "/despesas" },
+  { id: "perfil", label: "Perfil", icon: User, path: "/perfil" },
 ];
 
 export function IOSTabBar() {

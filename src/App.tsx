@@ -18,6 +18,7 @@ import RevistaFactus from "./pages/RevistaFactus";
 import RevistaSaude from "./pages/RevistaSaude";
 import ServicosVariados from "./pages/ServicosVariados";
 import Despesas from "./pages/Despesas";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/saude" element={<ProtectedRoute><RevistaSaude /></ProtectedRoute>} />
                 <Route path="/servicos" element={<ProtectedRoute><ServicosVariados /></ProtectedRoute>} />
                 <Route path="/despesas" element={<ProtectedRoute><Despesas /></ProtectedRoute>} />
+                <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Routes>

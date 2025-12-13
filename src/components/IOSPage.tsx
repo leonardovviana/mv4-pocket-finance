@@ -5,17 +5,25 @@ interface IOSPageProps {
   children: React.ReactNode;
   className?: string;
   showLargeTitle?: boolean;
+  headerLeft?: React.ReactNode;
+  headerRight?: React.ReactNode;
 }
 
-export function IOSPage({ title, children, className, showLargeTitle = true }: IOSPageProps) {
+export function IOSPage({ title, children, className, showLargeTitle = true, headerLeft, headerRight }: IOSPageProps) {
   return (
     <div className={cn(
       "min-h-screen bg-background pb-[100px] ios-safe-top",
       className
     )}>
       <header className="sticky top-0 z-40 ios-blur bg-background/80 border-b border-border">
-        <div className="ios-nav-bar px-4">
-          <h1 className="ios-headline text-foreground">{title}</h1>
+        <div className="ios-nav-bar px-4 flex items-center justify-between">
+          <div className="w-20 flex justify-start">
+            {headerLeft}
+          </div>
+          <h1 className="ios-headline text-foreground flex-1 text-center">{title}</h1>
+          <div className="w-20 flex justify-end">
+            {headerRight}
+          </div>
         </div>
       </header>
       
