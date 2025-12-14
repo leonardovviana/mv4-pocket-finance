@@ -81,7 +81,7 @@ export function IOSListItem({
       <div className="flex items-center gap-1 flex-shrink-0 min-w-0">
         {value ? (
           isValueString ? (
-            <span className="ios-body text-muted-foreground max-w-[140px] sm:max-w-[180px] truncate text-right tabular-nums whitespace-nowrap">{value}</span>
+            <span className="ios-footnote sm:ios-subheadline text-muted-foreground max-w-[140px] sm:max-w-[180px] truncate text-right tabular-nums whitespace-nowrap leading-tight">{value}</span>
           ) : (
             <div className="min-w-0">{value}</div>
           )

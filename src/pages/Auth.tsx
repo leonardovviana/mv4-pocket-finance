@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Lock, Mail, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Email inválido');
@@ -23,13 +23,16 @@ export default function Auth() {
   
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/');
+      const state = location.state as unknown as { from?: unknown } | null;
+      const from = state && typeof state.from === 'string' ? state.from : '/';
+      navigate(from, { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, location.state]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; name?: string } = {};

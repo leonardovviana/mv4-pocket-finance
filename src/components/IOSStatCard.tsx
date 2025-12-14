@@ -55,7 +55,7 @@ export function IOSStatCard({
       </div>
       
       <p className="ios-caption1 text-muted-foreground mb-1">{title}</p>
-      <p className="ios-title1 text-foreground tabular-nums truncate">{value}</p>
+      <p className="ios-title2 text-foreground tabular-nums truncate leading-tight">{value}</p>
       {subtitle && (
         <p className="ios-footnote text-muted-foreground mt-1">{subtitle}</p>
       )}

@@ -311,7 +311,7 @@ export default function Dashboard() {
                       </div>
                     ) : (
                       <>
-                        <span className="text-base font-semibold tabular-nums text-foreground whitespace-nowrap">
+                        <span className="ios-subheadline font-semibold tabular-nums text-foreground whitespace-nowrap max-w-[140px] truncate">
                           {formatBRL(parseNumeric(cashBalances[a.key] ?? '0') ?? 0)}
                         </span>
                         <Button
