@@ -48,6 +48,8 @@ export default function Dashboard() {
   const [cashBalances, setCashBalances] = useState<Record<CashAccountKey, string>>(() =>
     Object.fromEntries(CASH_ACCOUNTS.map((a) => [a.key, '0,00'])) as Record<CashAccountKey, string>,
   );
+  const [editingCashKey, setEditingCashKey] = useState<CashAccountKey | null>(null);
+  const [editingInitialValue, setEditingInitialValue] = useState<string>('');
 
   useEffect(() => {
     const rows = cashBalancesQuery.data ?? [];
@@ -274,15 +276,58 @@ export default function Dashboard() {
                 iconBgColor="bg-secondary"
                 title={a.label}
                 value={
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">R$</span>
-                    <Input
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={cashBalances[a.key] ?? ''}
-                      onChange={(e) => setCashBalances((prev) => ({ ...prev, [a.key]: e.target.value }))}
-                      className="h-8 w-[120px] text-right"
-                    />
+                  <div className="flex items-center justify-end gap-2">
+                    {editingCashKey === a.key ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          value={cashBalances[a.key] ?? ''}
+                          onChange={(e) => setCashBalances((prev) => ({ ...prev, [a.key]: e.target.value }))}
+                          className="h-8 w-[128px] text-right"
+                          autoFocus
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => setEditingCashKey(null)}
+                        >
+                          OK
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-muted-foreground"
+                          onClick={() => {
+                            setCashBalances((prev) => ({ ...prev, [a.key]: editingInitialValue }));
+                            setEditingCashKey(null);
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-base font-semibold tabular-nums text-foreground whitespace-nowrap">
+                          {formatBRL(parseNumeric(cashBalances[a.key] ?? '0') ?? 0)}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-muted-foreground"
+                          onClick={() => {
+                            setEditingInitialValue(cashBalances[a.key] ?? '');
+                            setEditingCashKey(a.key);
+                          }}
+                        >
+                          Editar
+                        </Button>
+                      </>
+                    )}
                   </div>
                 }
               />

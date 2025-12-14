@@ -469,7 +469,7 @@ export default function Chat() {
           ) : null}
         </div>
 
-        <div className="px-4 pb-44 space-y-3">
+        <div className="px-4 pb-[calc(11rem+env(safe-area-inset-bottom,20px))] space-y-3">
           {publicConvQuery.isLoading || messagesQuery.isLoading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -502,7 +502,7 @@ export default function Chat() {
         </div>
 
         {activeConversationId ? (
-          <div className="fixed left-0 right-0 bottom-[60px] z-40 ios-blur bg-background/80 border-t border-border">
+          <div className="fixed left-0 right-0 bottom-[calc(60px+env(safe-area-inset-bottom,20px))] z-40 ios-blur bg-background/80 border-t border-border">
             <div className="max-w-lg mx-auto px-4 py-2 space-y-2">
               <div className="flex items-center justify-between">
                 <Button type="button" variant="outline" size="sm" onClick={() => setPaymentOpen(true)}>

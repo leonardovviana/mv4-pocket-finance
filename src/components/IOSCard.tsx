@@ -50,6 +50,7 @@ export function IOSListItem({
 }: IOSListItemProps) {
   const Component = onClick ? "button" : "div";
   const iconColorClass = iconBgColor.includes("bg-secondary") ? "text-foreground" : "text-primary-foreground";
+  const isValueString = typeof value === "string";
   
   return (
     <Component
@@ -77,10 +78,14 @@ export function IOSListItem({
         </div>
       </div>
       
-      <div className="flex items-center gap-1 flex-shrink-0">
-        {value && (
-          <span className="ios-body text-muted-foreground">{value}</span>
-        )}
+      <div className="flex items-center gap-1 flex-shrink-0 min-w-0">
+        {value ? (
+          isValueString ? (
+            <span className="ios-body text-muted-foreground max-w-[140px] sm:max-w-[180px] truncate text-right tabular-nums whitespace-nowrap">{value}</span>
+          ) : (
+            <div className="min-w-0">{value}</div>
+          )
+        ) : null}
         {showChevron && (
           <ChevronRight className="w-5 h-5 text-muted-foreground" />
         )}

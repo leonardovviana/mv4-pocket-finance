@@ -10,7 +10,6 @@ interface IOSStatCardProps {
   trend?: "up" | "down" | "neutral";
   trendValue?: string;
   className?: string;
-  delay?: number;
 }
 
 export function IOSStatCard({
@@ -22,7 +21,6 @@ export function IOSStatCard({
   trend,
   trendValue,
   className,
-  delay = 0,
 }: IOSStatCardProps) {
   const iconTextClassName = iconColor.includes("bg-secondary")
     ? "text-secondary-foreground"
@@ -33,10 +31,9 @@ export function IOSStatCard({
   return (
     <div 
       className={cn(
-        "ios-card animate-ios-fade-in opacity-0",
+        "ios-card animate-ios-fade-in",
         className
       )}
-      style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
     >
       <div className="flex items-start justify-between mb-3">
         <div className={cn(
@@ -58,7 +55,7 @@ export function IOSStatCard({
       </div>
       
       <p className="ios-caption1 text-muted-foreground mb-1">{title}</p>
-      <p className="ios-title1 text-foreground">{value}</p>
+      <p className="ios-title1 text-foreground tabular-nums truncate">{value}</p>
       {subtitle && (
         <p className="ios-footnote text-muted-foreground mt-1">{subtitle}</p>
       )}
@@ -72,7 +69,6 @@ interface IOSProgressCardProps {
   total: number;
   color: string;
   className?: string;
-  delay?: number;
 }
 
 export function IOSProgressCard({
@@ -81,26 +77,33 @@ export function IOSProgressCard({
   total,
   color,
   className,
-  delay = 0,
 }: IOSProgressCardProps) {
   const percentage = Math.round((current / total) * 100);
+  const accentClass = color.includes("ios-green")
+    ? "accent-[hsl(var(--ios-green))] [&::-webkit-progress-value]:bg-[hsl(var(--ios-green))]"
+    : color.includes("ios-red")
+      ? "accent-[hsl(var(--ios-red))] [&::-webkit-progress-value]:bg-[hsl(var(--ios-red))]"
+      : "accent-[hsl(var(--primary))] [&::-webkit-progress-value]:bg-[hsl(var(--primary))]";
   
   return (
     <div 
-      className={cn("ios-card animate-ios-fade-in opacity-0", className)}
-      style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
+      className={cn("ios-card animate-ios-fade-in", className)}
     >
       <div className="flex items-center justify-between mb-3">
         <p className="ios-headline text-foreground">{title}</p>
         <p className="ios-subheadline text-muted-foreground">{percentage}%</p>
       </div>
       
-      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-        <div 
-          className={cn("h-full rounded-full transition-all duration-500", color)}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
+      <progress
+        value={current}
+        max={total}
+        className={cn(
+          "w-full h-2 overflow-hidden rounded-full",
+          "[&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-bar]:rounded-full",
+          "[&::-webkit-progress-value]:rounded-full",
+          accentClass
+        )}
+      />
       
       <div className="flex justify-between mt-2">
         <p className="ios-caption1 text-muted-foreground">
