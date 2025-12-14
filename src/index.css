@@ -245,7 +245,7 @@
   
   /* iOS Tab Bar Height */
   .ios-tab-bar-height {
-    height: calc(49px + env(safe-area-inset-bottom, 20px));
+    height: calc(60px + env(safe-area-inset-bottom, 20px));
     padding-bottom: env(safe-area-inset-bottom, 20px);
   }
   

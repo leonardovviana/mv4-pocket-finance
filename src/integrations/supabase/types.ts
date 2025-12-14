@@ -14,6 +14,195 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_conversations: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_public: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_public?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_public?: boolean
+        }
+        Relationships: []
+      }
+      chat_message_attachments: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          message_id: string
+          mime_type: string | null
+          object_path: string
+          size_bytes: number | null
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id?: string
+          message_id: string
+          mime_type?: string | null
+          object_path: string
+          size_bytes?: number | null
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          mime_type?: string | null
+          object_path?: string
+          size_bytes?: number | null
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          body: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          kind: string
+          metadata: Json
+          sender_id: string
+        }
+        Insert: {
+          body?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          sender_id: string
+        }
+        Update: {
+          body?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      chat_participants: {
+        Row: {
+          conversation_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: string
+          cost_center: string | null
+          created_at: string
+          due_day: number | null
+          expense_date: string
+          id: string
+          installments: number | null
+          kind: Database["public"]["Enums"]["expense_kind"]
+          metadata: Json
+          name: string
+          notes: string | null
+          paid: boolean
+          payment_method: string | null
+          receipt_url: string | null
+          recurring: boolean
+          recurring_rule: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: string
+          cost_center?: string | null
+          created_at?: string
+          due_day?: number | null
+          expense_date?: string
+          id?: string
+          installments?: number | null
+          kind: Database["public"]["Enums"]["expense_kind"]
+          metadata?: Json
+          name: string
+          notes?: string | null
+          paid?: boolean
+          payment_method?: string | null
+          receipt_url?: string | null
+          recurring?: boolean
+          recurring_rule?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: string
+          cost_center?: string | null
+          created_at?: string
+          due_day?: number | null
+          expense_date?: string
+          id?: string
+          installments?: number | null
+          kind?: Database["public"]["Enums"]["expense_kind"]
+          metadata?: Json
+          name?: string
+          notes?: string | null
+          paid?: boolean
+          payment_method?: string | null
+          receipt_url?: string | null
+          recurring?: boolean
+          recurring_rule?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cash_balances: {
+        Row: {
+          account: string
+          balance: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account: string
+          balance?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account?: string
+          balance?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -41,15 +230,76 @@ export type Database = {
         }
         Relationships: []
       }
+      service_entries: {
+        Row: {
+          amount: string | null
+          created_at: string
+          entry_date: string | null
+          id: string
+          metadata: Json
+          notes: string | null
+          service: Database["public"]["Enums"]["service_key"]
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: string | null
+          created_at?: string
+          entry_date?: string | null
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          service: Database["public"]["Enums"]["service_key"]
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: string | null
+          created_at?: string
+          entry_date?: string | null
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          service?: Database["public"]["Enums"]["service_key"]
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_direct_conversation: {
+        Args: { p_other_user_id: string }
+        Returns: string
+      }
+      find_user_by_email: {
+        Args: { p_email: string }
+        Returns: { id: string; full_name: string | null; avatar_url: string | null }[]
+      }
+      get_or_create_public_conversation: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      expense_kind: "fixed" | "variable" | "provision"
+      service_key:
+        | "melhores_do_ano"
+        | "gestao_midias"
+        | "premio_excelencia"
+        | "carro_de_som"
+        | "revista_factus"
+        | "revista_saude"
+        | "servicos_variados"
     }
     CompositeTypes: {
       [_ in never]: never

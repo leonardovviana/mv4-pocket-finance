@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import logo from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Mail, Lock, User } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2, Lock, Mail, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Email inválido');
@@ -120,9 +121,11 @@ export default function Auth() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <span className="text-3xl font-bold text-primary">MV4</span>
-          </div>
+          <img
+            src={logo}
+            alt="MV4 Agência"
+            className="mx-auto mb-4 h-16 w-auto max-w-full"
+          />
           <h1 className="text-2xl font-semibold text-foreground">MV4 Financeiro</h1>
           <p className="text-muted-foreground mt-1">
             {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}

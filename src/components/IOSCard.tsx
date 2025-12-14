@@ -49,6 +49,7 @@ export function IOSListItem({
   className,
 }: IOSListItemProps) {
   const Component = onClick ? "button" : "div";
+  const iconColorClass = iconBgColor.includes("bg-secondary") ? "text-foreground" : "text-primary-foreground";
   
   return (
     <Component
@@ -65,7 +66,7 @@ export function IOSListItem({
             "w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
             iconBgColor
           )}>
-            <span className="text-primary-foreground">{icon}</span>
+            <span className={iconColorClass}>{icon}</span>
           </div>
         )}
         <div className="flex-1 min-w-0">
@@ -81,7 +82,7 @@ export function IOSListItem({
           <span className="ios-body text-muted-foreground">{value}</span>
         )}
         {showChevron && (
-          <ChevronRight className="w-5 h-5 text-ios-gray-3" />
+          <ChevronRight className="w-5 h-5 text-muted-foreground" />
         )}
       </div>
     </Component>

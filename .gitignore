@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local secrets (do not commit)
+.env
+data/service_role_key.txt
+
+# Supabase local temp
+supabase/.temp/
+
+# Documentos (não versionar)
+src/assets/*.docx
+src/assets/*.xlsx
+src/assets/~$*

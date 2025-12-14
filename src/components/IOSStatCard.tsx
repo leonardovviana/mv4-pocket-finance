@@ -24,6 +24,12 @@ export function IOSStatCard({
   className,
   delay = 0,
 }: IOSStatCardProps) {
+  const iconTextClassName = iconColor.includes("bg-secondary")
+    ? "text-secondary-foreground"
+    : iconColor.includes("bg-muted")
+      ? "text-foreground"
+      : "text-primary-foreground";
+
   return (
     <div 
       className={cn(
@@ -37,7 +43,7 @@ export function IOSStatCard({
           "w-10 h-10 rounded-xl flex items-center justify-center",
           iconColor
         )}>
-          <Icon className="w-5 h-5 text-primary-foreground" />
+          <Icon className={cn("w-5 h-5", iconTextClassName)} />
         </div>
         {trend && trendValue && (
           <span className={cn(

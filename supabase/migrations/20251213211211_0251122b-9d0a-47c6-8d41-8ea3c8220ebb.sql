@@ -1,12 +1,30 @@
--- Create storage bucket for avatars
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('avatars', 'avatars', true);
+-- Create storage bucket for avatars (compatível com variações do schema do storage)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars') THEN
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'storage' AND table_name = 'buckets' AND column_name = 'public'
+    ) THEN
+      EXECUTE 'INSERT INTO storage.buckets (id, name, public) VALUES (''avatars'', ''avatars'', true)';
+    ELSIF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'storage' AND table_name = 'buckets' AND column_name = 'is_public'
+    ) THEN
+      EXECUTE 'INSERT INTO storage.buckets (id, name, is_public) VALUES (''avatars'', ''avatars'', true)';
+    ELSE
+      EXECUTE 'INSERT INTO storage.buckets (id, name) VALUES (''avatars'', ''avatars'')';
+    END IF;
+  END IF;
+END $$;
 
 -- Allow users to upload their own avatar
 CREATE POLICY "Users can upload their own avatar"
 ON storage.objects FOR INSERT
 WITH CHECK (
-  bucket_id = 'avatars' 
+  bucket_id = 'avatars'
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 

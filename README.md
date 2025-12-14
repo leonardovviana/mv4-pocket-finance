@@ -1,73 +1,43 @@
-# Welcome to your Lovable project
+# MV4 Financeiro (PWA)
 
-## Project info
+Aplicativo financeiro interno da Agência MV4 (PWA) com:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+- Cadastros de receitas e despesas
+- Importadores (scripts) para lançamentos em lote
+- Chat público com solicitações de pagamento e notificações
+- Dashboard com gráficos e “Saldo em caixa” (manual)
 
-## How can I edit this code?
+## Tecnologias
 
-There are several ways of editing your application.
+- Vite + React + TypeScript
+- Tailwind + shadcn/ui
+- Supabase (Auth, Postgres, Storage, Realtime)
+- PWA via `vite-plugin-pwa`
 
-**Use Lovable**
+## Rodar localmente
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```cmd
+cd "c:\Users\Leonardo\Documents\PROJETOS (APPS-SITES)\mv4-pocket-finance"
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Abra `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Build
 
-**Use GitHub Codespaces**
+```cmd
+npm run build
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## PWA / Notificações
 
-## What technologies are used for this project?
+- O app pede permissão de notificação ao abrir o `Chat Público`.
+- Quando o app estiver em segundo plano, novas mensagens/solicitações no chat público geram notificação.
+- O clique na notificação abre `/chat`.
 
-This project is built with:
+## Supabase
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Migrações em `supabase/migrations/`
+- Tipos gerados/atualizados em `src/integrations/supabase/types.ts`

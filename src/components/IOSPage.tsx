@@ -17,11 +17,11 @@ export function IOSPage({ title, children, className, showLargeTitle = true, hea
     )}>
       <header className="sticky top-0 z-40 ios-blur bg-background/80 border-b border-border">
         <div className="ios-nav-bar px-4 flex items-center justify-between">
-          <div className="w-20 flex justify-start">
+          <div className="min-w-[56px] flex justify-start flex-shrink-0">
             {headerLeft}
           </div>
-          <h1 className="ios-headline text-foreground flex-1 text-center">{title}</h1>
-          <div className="w-20 flex justify-end">
+          <h1 className="ios-headline text-foreground flex-1 text-center truncate px-2 min-w-0">{title}</h1>
+          <div className="min-w-[56px] flex justify-end flex-shrink-0">
             {headerRight}
           </div>
         </div>

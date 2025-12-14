@@ -1,17 +1,18 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { 
-  Trophy, 
-  Share2, 
-  Award, 
-  Volume2, 
-  BookOpen, 
-  Heart, 
-  Briefcase, 
-  Wallet,
-  User,
-  LayoutDashboard
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+    Award,
+    BookOpen,
+    Briefcase,
+    Heart,
+    LayoutDashboard,
+    MessageCircle,
+    Share2,
+    Trophy,
+    User,
+    Volume2,
+    Wallet
+} from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface TabItem {
   id: string;
@@ -30,6 +31,7 @@ const tabs: TabItem[] = [
   { id: "saude", label: "Saúde", icon: Heart, path: "/saude" },
   { id: "servicos", label: "Serviços", icon: Briefcase, path: "/servicos" },
   { id: "despesas", label: "Despesas", icon: Wallet, path: "/despesas" },
+  { id: "chat", label: "Chat", icon: MessageCircle, path: "/chat" },
   { id: "perfil", label: "Perfil", icon: User, path: "/perfil" },
 ];
 
@@ -39,7 +41,7 @@ export function IOSTabBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 ios-blur bg-tabBar/80 border-t border-tabBar-border ios-tab-bar-height">
-      <div className="flex items-start justify-around pt-2 px-1 max-w-lg mx-auto">
+      <div className="ios-scroll flex items-start gap-2 pt-2 px-2 overflow-x-auto w-full max-w-lg mx-auto md:overflow-x-visible md:max-w-none md:justify-around md:gap-0 md:px-6">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
@@ -49,7 +51,7 @@ export function IOSTabBar() {
               key={tab.id}
               onClick={() => navigate(tab.path)}
               className={cn(
-                "flex flex-col items-center justify-center min-w-[44px] py-1 ios-tap",
+                "flex flex-col items-center justify-center min-w-[64px] py-1 ios-tap flex-shrink-0 md:flex-1 md:min-w-0 md:flex-shrink",
                 "transition-colors duration-200"
               )}
             >
