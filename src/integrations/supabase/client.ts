@@ -5,10 +5,17 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Quando as env vars não existem (ex.: deploy sem configurar no Netlify),
+// evitamos crash no import e deixamos a UI mostrar uma tela de configuração.
+const safeUrl = isSupabaseConfigured ? SUPABASE_URL : 'http://localhost';
+const safeKey = isSupabaseConfigured ? SUPABASE_PUBLISHABLE_KEY : 'missing-supabase-key';
+
+export const supabase = createClient<Database>(safeUrl, safeKey, {
   auth: {
     storage: localStorage,
     persistSession: true,
