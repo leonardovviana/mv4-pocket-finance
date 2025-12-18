@@ -2,6 +2,7 @@ import logo from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Lock, Mail, User } from 'lucide-react';
@@ -18,6 +19,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [desiredRole, setDesiredRole] = useState<'employee' | 'admin'>('employee');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string }>({});
   
@@ -84,7 +86,7 @@ export default function Auth() {
           }
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, fullName, desiredRole);
         if (error) {
           if (error.message.includes('User already registered')) {
             toast({
@@ -159,6 +161,25 @@ export default function Auth() {
             </div>
           )}
 
+          {!isLogin && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Tipo de conta</Label>
+              <RadioGroup value={desiredRole} onValueChange={(v) => setDesiredRole(v as 'employee' | 'admin')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="employee" id="role_employee" />
+                  <Label htmlFor="role_employee">Funcionário</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="admin" id="role_admin" />
+                  <Label htmlFor="role_admin">Administrador</Label>
+                </div>
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">
+                Administrador tem acesso total. Use apenas para pessoas de confiança.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium">
               Email
@@ -221,6 +242,7 @@ export default function Auth() {
             onClick={() => {
               setIsLogin(!isLogin);
               setErrors({});
+              setDesiredRole('employee');
             }}
             className="text-primary font-medium"
           >
