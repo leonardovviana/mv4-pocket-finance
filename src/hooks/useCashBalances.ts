@@ -40,14 +40,13 @@ function parseBalanceInput(value: string): string {
 
 export function useCashBalances(userId: string | undefined) {
   return useQuery({
-    queryKey: ['cash-balances', userId],
+    queryKey: ['cash-balances'],
     enabled: Boolean(userId),
     queryFn: async () => {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('cash_balances')
-        .select('account,balance')
-        .eq('user_id', userId);
+        .select('account,balance');
       if (error) throw error;
       return data ?? [];
     },
@@ -68,11 +67,11 @@ export function useUpsertCashBalances(userId: string | undefined) {
 
       const { error } = await supabase
         .from('cash_balances')
-        .upsert(payload, { onConflict: 'user_id,account' });
+        .upsert(payload, { onConflict: 'account' });
       if (error) throw error;
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['cash-balances', userId] });
+      await qc.invalidateQueries({ queryKey: ['cash-balances'] });
     },
   });
 }

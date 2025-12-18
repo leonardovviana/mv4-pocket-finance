@@ -31,6 +31,11 @@ function getPaymentInfo(entry: ServiceEntry) {
   return { isPaid, isPartial, remaining, paidAmount: paidAmountEffective, totalAbs };
 }
 
+function hasReceipt(entry: ServiceEntry) {
+  const metadata = (entry.metadata ?? {}) as Record<string, unknown>;
+  return typeof metadata.receipt_path === "string" && metadata.receipt_path.trim().length > 0;
+}
+
 function getMetaString(metadata: Record<string, unknown>, key: string) {
   const v = metadata[key];
   return typeof v === "string" ? v : "";
@@ -162,6 +167,7 @@ export function ServiceEntriesSection(props: { service: ServiceKey }) {
             const subtitle = formatSubtitle(entry, props.service);
             const amountNumber = parseNumeric(entry.amount);
             const payment = getPaymentInfo(entry);
+            const receiptLabel = hasReceipt(entry) ? "Comprovante" : null;
             const paymentLabel = payment.isPaid
               ? "Pago"
               : payment.isPartial
@@ -175,7 +181,7 @@ export function ServiceEntriesSection(props: { service: ServiceKey }) {
                 icon={<FileText className="w-4 h-4" />}
                 iconBgColor={payment.isPaid ? "bg-ios-green" : "bg-ios-red"}
                 title={entry.title}
-                subtitle={[paymentLabel, subtitle].filter(Boolean).join(" • ") || undefined}
+                subtitle={[paymentLabel, receiptLabel, subtitle].filter(Boolean).join(" • ") || undefined}
                 value={amountNumber === null ? undefined : formatBRL(amountNumber)}
                 showChevron
                 onClick={() => {
@@ -197,6 +203,7 @@ export function ServiceEntriesSection(props: { service: ServiceKey }) {
         title={editing ? "Editar registro" : "Novo registro"}
         config={config}
         initial={editing}
+        userId={userId ?? ""}
         isSaving={upsert.isPending}
         isDeleting={del.isPending}
         onSubmit={async (payload) => {

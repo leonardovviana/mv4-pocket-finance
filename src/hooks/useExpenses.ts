@@ -17,7 +17,7 @@ function monthRange(monthKey: string) {
 
 export function useExpenses(userId?: string, monthKey?: string) {
   return useQuery({
-    queryKey: ["expenses", userId, monthKey ?? "all"],
+    queryKey: ["expenses", monthKey ?? "all"],
     enabled: Boolean(userId),
     queryFn: async () => {
       const q = supabase
@@ -88,7 +88,7 @@ export function useUpsertExpense(userId: string) {
       return data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["expenses", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
     },
   });
 }
@@ -102,7 +102,7 @@ export function useDeleteExpense(userId: string) {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["expenses", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
     },
   });
 }

@@ -4,37 +4,36 @@ import { IOSStatCard } from '@/components/IOSStatCard';
 import { MonthFilter } from '@/components/MonthFilter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { CASH_ACCOUNTS, type CashAccountKey, useCashBalances, useUpsertCashBalances } from '@/hooks/useCashBalances';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useMonthFilter } from '@/hooks/useMonthFilter';
-import { useToast } from '@/hooks/use-toast';
 import { useAllServiceEntries } from '@/hooks/useServiceEntries';
 import { SERVICE_LABEL, formatBRL, parseNumeric } from '@/lib/domain';
 import { addMonths, format, formatDistanceToNow, isWithinInterval, parseISO, startOfDay, startOfMonth, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-    ArrowUpRight,
-    DollarSign,
-    FileText,
-    TrendingDown,
-    TrendingUp
+  ArrowUpRight,
+  DollarSign,
+  FileText,
+  TrendingDown,
+  TrendingUp
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 export default function Dashboard() {

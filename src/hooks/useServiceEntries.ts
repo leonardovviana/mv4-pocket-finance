@@ -19,7 +19,7 @@ function monthRange(monthKey: string) {
 
 export function useAllServiceEntries(userId?: string) {
   return useQuery({
-    queryKey: ["service_entries", "all", userId],
+    queryKey: ["service_entries", "all"],
     enabled: Boolean(userId),
     queryFn: async () => {
       const { data, error } = await supabase
@@ -36,7 +36,7 @@ export function useAllServiceEntries(userId?: string) {
 
 export function useServiceEntries(service: ServiceKey, userId?: string, monthKey?: string) {
   return useQuery({
-    queryKey: ["service_entries", service, userId, monthKey ?? "all"],
+    queryKey: ["service_entries", service, monthKey ?? "all"],
     enabled: Boolean(userId),
     queryFn: async () => {
       const q = supabase
@@ -75,10 +75,7 @@ export function useUpsertServiceEntry(service: ServiceKey, userId: string) {
       notes: string | null;
       metadata: Json;
     }) => {
-      const insertPayload = {
-        id: payload.id,
-        user_id: userId,
-        service,
+      const basePayload = {
         title: payload.title,
         amount: payload.amount === null ? null : payload.amount.toFixed(2),
         entry_date: payload.entry_date,
@@ -87,18 +84,25 @@ export function useUpsertServiceEntry(service: ServiceKey, userId: string) {
         metadata: payload.metadata,
       };
 
-      const { data, error } = await supabase
-        .from("service_entries")
-        .upsert(insertPayload)
-        .select("*")
-        .single();
+      const { data, error } = payload.id
+        ? await supabase
+            .from("service_entries")
+            .update(basePayload)
+            .eq("id", payload.id)
+            .select("*")
+            .single()
+        : await supabase
+            .from("service_entries")
+          .insert({ id: payload.id, user_id: userId, service, ...basePayload })
+            .select("*")
+            .single();
 
       if (error) throw error;
       return data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", service, userId] });
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", "all", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["service_entries", service] });
+      await queryClient.invalidateQueries({ queryKey: ["service_entries", "all"] });
     },
   });
 }
@@ -112,8 +116,8 @@ export function useDeleteServiceEntry(service: ServiceKey, userId: string) {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", service, userId] });
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", "all", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["service_entries", service] });
+      await queryClient.invalidateQueries({ queryKey: ["service_entries", "all"] });
     },
   });
 }

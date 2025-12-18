@@ -1,16 +1,17 @@
+import { useProfileRole } from "@/hooks/useProfileRole";
 import { cn } from "@/lib/utils";
 import {
-    Award,
-    BookOpen,
-    Briefcase,
-    Heart,
-    LayoutDashboard,
-    MessageCircle,
-    Share2,
-    Trophy,
-    User,
-    Volume2,
-    Wallet
+  Award,
+  BookOpen,
+  Briefcase,
+  Heart,
+  LayoutDashboard,
+  MessageCircle,
+  Share2,
+  Trophy,
+  User,
+  Volume2,
+  Wallet
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -21,7 +22,7 @@ interface TabItem {
   path: string;
 }
 
-const tabs: TabItem[] = [
+const adminTabs: TabItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
   { id: "melhores", label: "Melhores", icon: Trophy, path: "/melhores" },
   { id: "midias", label: "Mídias", icon: Share2, path: "/midias" },
@@ -35,9 +36,18 @@ const tabs: TabItem[] = [
   { id: "perfil", label: "Perfil", icon: User, path: "/perfil" },
 ];
 
+const employeeTabs: TabItem[] = [
+  { id: "funcionario", label: "Lançamentos", icon: Briefcase, path: "/funcionario" },
+  { id: "perfil", label: "Perfil", icon: User, path: "/perfil" },
+];
+
 export function IOSTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const roleQuery = useProfileRole();
+
+  const role = roleQuery.data ?? "employee";
+  const tabs = role === "admin" ? adminTabs : employeeTabs;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 ios-blur bg-tabBar/80 border-t border-tabBar-border ios-tab-bar-height">

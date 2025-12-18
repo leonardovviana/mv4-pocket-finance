@@ -1,5 +1,7 @@
+import { ChuvinhaFab } from "@/components/ChuvinhaFab";
 import { IOSTabBar } from "@/components/IOSTabBar";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RoleGate } from "@/components/RoleGate";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,6 +18,7 @@ import CarroSom from "./pages/CarroSom";
 import Chat from "./pages/Chat";
 import Dashboard from "./pages/Dashboard";
 import Despesas from "./pages/Despesas";
+import Funcionario from "./pages/Funcionario";
 import GestaoMidias from "./pages/GestaoMidias";
 import MelhoresDoAno from "./pages/MelhoresDoAno";
 import NotFound from "./pages/NotFound";
@@ -57,23 +60,136 @@ const App = () => (
                 <div className="min-h-screen bg-background">
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
-                    <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                    <Route path="/melhores" element={<ProtectedRoute><MelhoresDoAno /></ProtectedRoute>} />
-                    <Route path="/midias" element={<ProtectedRoute><GestaoMidias /></ProtectedRoute>} />
-                    <Route path="/premio" element={<ProtectedRoute><PremioExcelencia /></ProtectedRoute>} />
-                    <Route path="/carro-som" element={<ProtectedRoute><CarroSom /></ProtectedRoute>} />
-                    <Route path="/factus" element={<ProtectedRoute><RevistaFactus /></ProtectedRoute>} />
-                    <Route path="/saude" element={<ProtectedRoute><RevistaSaude /></ProtectedRoute>} />
-                    <Route path="/servicos" element={<ProtectedRoute><ServicosVariados /></ProtectedRoute>} />
-                    <Route path="/despesas" element={<ProtectedRoute><Despesas /></ProtectedRoute>} />
-                    <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-                    <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+                    <Route
+                      path="/funcionario"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin", "employee"]} redirectTo="/auth">
+                            <Funcionario />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <Dashboard />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/melhores"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <MelhoresDoAno />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/midias"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <GestaoMidias />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/premio"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <PremioExcelencia />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/carro-som"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <CarroSom />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/factus"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <RevistaFactus />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/saude"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <RevistaSaude />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/servicos"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <ServicosVariados />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/despesas"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <Despesas />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/chat"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <Chat />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/perfil"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin", "employee"]} redirectTo="/auth">
+                            <Profile />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <Routes>
                     <Route path="/auth" element={null} />
                     <Route path="*" element={<IOSTabBar />} />
                   </Routes>
+
+                  <ChuvinhaFab />
                 </div>
               </MonthFilterProvider>
             </AuthProvider>

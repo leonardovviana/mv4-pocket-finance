@@ -6,11 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { ServiceEntry } from "@/hooks/useServiceEntries";
+import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { formatBRL, parseNumeric } from "@/lib/domain";
 import type { ServiceEntryConfig } from "@/lib/serviceEntryConfig";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -55,6 +56,7 @@ const schema = z.object({
     .refine((v) => v === "" || (!Number.isNaN(Number(v)) && Number(v) >= 1 && Number(v) <= 360), {
       message: "Parcelas inválidas",
     }),
+  receipt_path: z.string().optional(),
 
   plan_type: z.string().optional(),
   platform: z.string().optional(),
@@ -97,6 +99,7 @@ export function ServiceEntryDialog(props: {
   title: string;
   config: ServiceEntryConfig;
   initial?: ServiceEntry | null;
+  userId: string;
   onSubmit: (payload: {
     id?: string;
     title: string;
@@ -112,6 +115,13 @@ export function ServiceEntryDialog(props: {
 }) {
   const { open, onOpenChange, initial } = props;
 
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+
+  const effectiveId = useMemo(() => {
+    return initial?.id ?? (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : undefined);
+  }, [initial?.id]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -124,6 +134,7 @@ export function ServiceEntryDialog(props: {
       paid_amount: "",
       payment_method: "",
       installments: "",
+      receipt_path: "",
       plan_type: "",
       platform: "",
       handle: "",
@@ -142,6 +153,8 @@ export function ServiceEntryDialog(props: {
 
   useEffect(() => {
     if (!open) return;
+    setReceiptFile(null);
+
     const metadata = (initial?.metadata ?? {}) as Record<string, unknown>;
     const metaEntryType = typeof metadata.entry_type === "string" ? metadata.entry_type : "";
     const parsedInitialAmount = parseNumeric(initial?.amount);
@@ -177,6 +190,8 @@ export function ServiceEntryDialog(props: {
         ? totalAbs
         : null;
 
+    const receiptPath = typeof metadata.receipt_path === "string" ? metadata.receipt_path : "";
+
     form.reset({
       title: initial?.title ?? "",
       entry_type: inferredType,
@@ -187,6 +202,8 @@ export function ServiceEntryDialog(props: {
       paid_amount: paidAmountForForm === null ? "" : toMoneyInputString(paidAmountForForm),
       payment_method,
       installments,
+
+      receipt_path: receiptPath,
 
       plan_type: getString("plan_type"),
       platform: getString("platform"),
@@ -261,6 +278,36 @@ export function ServiceEntryDialog(props: {
       installments: installmentsNumber !== null && Number.isFinite(installmentsNumber) ? installmentsNumber : undefined,
     };
 
+    let receiptPath: string | null = values.receipt_path ? String(values.receipt_path) : null;
+
+    if (receiptFile) {
+      if (!props.userId) return;
+      if (!effectiveId) return;
+
+      const safeName = receiptFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const objectPath = `${props.userId}/service_entries/${effectiveId}/${Date.now()}_${safeName}`;
+
+      setIsUploadingReceipt(true);
+      try {
+        const { error } = await supabase.storage
+          .from("service_entry_receipts")
+          .upload(objectPath, receiptFile, { upsert: true, contentType: receiptFile.type });
+        if (error) throw error;
+        receiptPath = objectPath;
+      } finally {
+        setIsUploadingReceipt(false);
+      }
+    }
+
+    if (receiptPath) {
+      nextMeta.receipt_path = receiptPath;
+    } else {
+      nextMeta.receipt_path = undefined;
+    }
+
+    const nextStatusRaw = values.status ? values.status.trim() : "";
+    const nextStatus = nextStatusRaw ? nextStatusRaw : paidEffective ? "pago" : initial?.status ?? null;
+
     for (const key of extraKeys) {
       const v = values[key];
       if (typeof v === "string") {
@@ -275,11 +322,11 @@ export function ServiceEntryDialog(props: {
     }
 
     await props.onSubmit({
-      id: initial?.id,
+      id: effectiveId,
       title: values.title,
       amount: amountNumber,
       entry_date: values.entry_date ? values.entry_date : null,
-      status: values.status ? values.status : null,
+      status: nextStatus,
       notes: values.notes ? values.notes : null,
       metadata: {
         ...nextMeta,
@@ -414,6 +461,49 @@ export function ServiceEntryDialog(props: {
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="receipt_file">Comprovante (upload, opcional)</Label>
+            <Input
+              id="receipt_file"
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+            />
+            {receiptFile ? (
+              <p className="text-xs text-muted-foreground">Selecionado: {receiptFile.name}</p>
+            ) : form.watch("receipt_path") ? (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Comprovante anexado</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const path = form.watch("receipt_path");
+                    if (!path) return;
+                    const { data, error } = await supabase.storage
+                      .from("service_entry_receipts")
+                      .createSignedUrl(path, 60);
+                    if (error) return;
+                    if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  Abrir
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => form.setValue("receipt_path", "")}
+                >
+                  Remover
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Aceita imagem ou PDF</p>
+            )}
+          </div>
+
           {props.config.extraFields.map((f) => {
             if (f.type === "date") {
               return (
@@ -462,7 +552,7 @@ export function ServiceEntryDialog(props: {
                 Excluir
               </Button>
             )}
-            <Button type="submit" disabled={props.isSaving || props.isDeleting}>
+            <Button type="submit" disabled={props.isSaving || props.isDeleting || isUploadingReceipt}>
               Salvar
             </Button>
           </DialogFooter>
