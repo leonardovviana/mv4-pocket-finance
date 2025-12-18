@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import * as XLSX from "xlsx";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -280,6 +280,9 @@ export function ChuvinhaFab() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Chuvinha</DialogTitle>
+            <DialogDescription className="sr-only">
+              Assistente financeira da MV4 para conversar e importar planilhas.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex gap-2">
