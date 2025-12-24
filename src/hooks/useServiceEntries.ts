@@ -42,7 +42,8 @@ export function useServiceEntries(service: ServiceKey, userId?: string, monthKey
       const base = supabase
         .from("service_entries")
         .select("*")
-        .eq("service", service);
+        .eq("service", service)
+        .eq("user_id", userId as string);
 
       if (!monthKey) {
         const { data, error } = await base
@@ -120,8 +121,8 @@ export function useUpsertServiceEntry(service: ServiceKey, userId: string) {
       return;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", service] });
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", "all"] });
+      // Invalida tudo de service_entries para cobrir listas por mês/aba e evitar cache divergente.
+      await queryClient.invalidateQueries({ queryKey: ["service_entries"] });
     },
   });
 }
@@ -135,8 +136,7 @@ export function useDeleteServiceEntry(service: ServiceKey, userId: string) {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", service] });
-      await queryClient.invalidateQueries({ queryKey: ["service_entries", "all"] });
+      await queryClient.invalidateQueries({ queryKey: ["service_entries"] });
     },
   });
 }
