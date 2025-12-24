@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useMonthFilter } from "@/hooks/useMonthFilter";
 import { usePayables } from "@/hooks/usePayables";
 import { formatBRL, parseNumeric } from "@/lib/domain";
-import { format, parseISO } from "date-fns";
+import { addMonths, format, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FileText } from "lucide-react";
 import { useMemo } from "react";
@@ -36,20 +36,34 @@ const COLORS = [
   "hsl(var(--ios-purple))",
 ];
 
+function monthWindow(anchorMonthKey?: string) {
+  const anchor = anchorMonthKey ? parseISO(`${anchorMonthKey}-01`) : new Date();
+  const base = startOfMonth(anchor);
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(base, i - 11));
+  return months.map((d) => ({
+    key: format(d, "yyyy-MM"),
+    label: format(d, "MMM/yy", { locale: ptBR }),
+    aberto: 0,
+    pago: 0,
+  }));
+}
+
 export function PayablesCharts() {
   const { selectedMonth } = useMonthFilter();
-  const q = usePayables(selectedMonth);
+  const q = usePayables();
 
-  const { totals, byStatus, byVendor, byDueDay, overdueOpen } = useMemo(() => {
+  const { totals, byStatus, byVendor, byMonth, overdueOpen } = useMemo(() => {
     const items: any[] = q.data ?? [];
+
+    const months = monthWindow(selectedMonth);
+    const monthMap = new Map<string, (typeof months)[number]>();
+    for (const m of months) monthMap.set(m.key, m);
 
     const totalAll = items.reduce((acc, p) => acc + (parseNumeric(p.amount) ?? 0), 0);
     const openTotal = items.filter((p) => p.status === "open").reduce((acc, p) => acc + (parseNumeric(p.amount) ?? 0), 0);
 
     const statusCounts = new Map<string, number>();
     const vendorMap = new Map<string, number>();
-    const dayMap = new Map<string, number>();
-
     let overdue = 0;
 
     for (const p of items) {
@@ -61,8 +75,12 @@ export function PayablesCharts() {
 
       try {
         const d = parseISO(p.due_date);
-        const day = format(d, "dd", { locale: ptBR });
-        dayMap.set(day, (dayMap.get(day) ?? 0) + amount);
+        const key = format(d, "yyyy-MM");
+        const bucket = monthMap.get(key);
+        if (bucket) {
+          if (p.status === "paid") bucket.pago += amount;
+          else if (p.status === "open") bucket.aberto += amount;
+        }
       } catch {
         // ignore
       }
@@ -81,18 +99,14 @@ export function PayablesCharts() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
 
-    const byDueDay = Array.from(dayMap.entries())
-      .map(([day, value]) => ({ day, value }))
-      .sort((a, b) => Number(a.day) - Number(b.day));
-
     return {
       totals: { totalAll, openTotal, count: items.length },
       byStatus,
       byVendor,
-      byDueDay,
+      byMonth: months,
       overdueOpen: overdue,
     };
-  }, [q.data]);
+  }, [q.data, selectedMonth]);
 
   return (
     <div className="space-y-3">
@@ -102,15 +116,16 @@ export function PayablesCharts() {
       </div>
 
       <IOSCard className="p-4">
-        <IOSSectionHeader title="Vencimento por dia" className="px-0" />
+        <IOSSectionHeader title="Contas a pagar (por mês)" className="px-0" />
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={byDueDay} margin={{ left: 8, right: 8 }}>
+            <BarChart data={byMonth} margin={{ left: 8, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
+              <XAxis dataKey="label" />
               <YAxis />
               <Tooltip formatter={(v: any) => formatBRL(Number(v) || 0)} />
-              <Bar dataKey="value" fill="hsl(var(--ios-orange))" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="aberto" fill="hsl(var(--ios-red))" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pago" fill="hsl(var(--ios-green))" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

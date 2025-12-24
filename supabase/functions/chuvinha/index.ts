@@ -57,6 +57,29 @@ function parsePtBrDateToIso(input: string): string | null {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function parseMonthKey(input: string): string | null {
+  const t = input.trim();
+  const m = t.match(/\b(20\d{2})-(0[1-9]|1[0-2])\b/);
+  if (!m) return null;
+  return `${m[1]}-${m[2]}`;
+}
+
+function monthRange(monthKey: string) {
+  const startDate = `${monthKey}-01`;
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime())) {
+    return null;
+  }
+  const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  const endDate = end.toISOString().slice(0, 10);
+  return {
+    startDate,
+    endDate,
+    startTs: start.toISOString(),
+    endTs: end.toISOString(),
+  };
+}
+
 function normalizeText(input: string) {
   return input
     .normalize("NFD")
@@ -91,6 +114,11 @@ function detectServiceKey(input: string):
   if (/revista\s+factus/.test(t)) return "revista_factus";
   if (/revista\s+saude|factus\s+saude/.test(t)) return "revista_saude";
   return "servicos_variados";
+}
+
+function pickContextMonth(rawContext: any): string | null {
+  const m = typeof rawContext?.month === "string" ? rawContext.month.trim() : "";
+  return /^\d{4}-\d{2}$/.test(m) ? m : null;
 }
 
 function detectPaid(input: string): boolean {
@@ -258,6 +286,7 @@ Deno.serve(async (req) => {
 
     const rawContext = (body as any)?.context as any;
     const contextService = isServiceKey(rawContext?.service) ? (rawContext.service as any) : null;
+    const contextMonth = pickContextMonth(rawContext);
 
     // 0) Comandos de cadastro
     if (/^(\s*)(cadastre|cadastrar)\b/i.test(question)) {
@@ -392,11 +421,125 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 1.1) Perguntas por mês (quando o app já envia o mês selecionado na aba)
+    const monthKey = contextMonth ?? parseMonthKey(question);
+    const asksOpen = /\b(falta\s+pagar|quem\s+falta\s+pagar|em\s+aberto|pendente|pendencias|pendências)\b/i.test(question);
+    const asksMonthly =
+      /\b(mes|mês|mensal|no\s+mes|no\s+mês|neste\s+mes|neste\s+mês|nesse\s+mes|nesse\s+mês)\b/i.test(question) ||
+      Boolean(monthKey && (asksOpen || isDespesas || isReceitas || isRecebimentos));
+
+    if (monthKey && asksMonthly && (asksOpen || isDespesas || isReceitas || isRecebimentos)) {
+      const range = monthRange(monthKey);
+      if (!range) {
+        return json({ reply: "Miau… não entendi qual mês você quis dizer. Use formato YYYY-MM (ex: 2025-12)." });
+      }
+
+      const service = contextService ?? (detectServiceKey(question) as any);
+      const scopedService = contextService ? contextService : service;
+
+      // (A) service_entries: receitas/despesas e pendências de recebimento
+      let se = db
+        .from("service_entries")
+        .select("id,title,amount,entry_date,created_at,service,metadata")
+        .order("created_at", { ascending: false });
+
+      if (scopedService && scopedService !== "servicos_variados") {
+        se = se.eq("service", scopedService);
+      }
+
+      const { data: seData, error: seErr } = await se.or(
+        `and(entry_date.gte.${range.startDate},entry_date.lt.${range.endDate}),and(entry_date.is.null,created_at.gte.${range.startTs},created_at.lt.${range.endTs})`
+      );
+
+      if (seErr) {
+        return json({
+          reply:
+            "Não consegui acessar os lançamentos desse mês agora. Pode ser permissão/configuração. Erro: " +
+            String(seErr.message ?? seErr),
+        });
+      }
+
+      const entries = Array.isArray(seData) ? seData : [];
+
+      let receitasTotal = 0;
+      let despesasTotal = 0;
+      let openTotal = 0;
+      const openLines: Array<{ title: string; remaining: number }> = [];
+
+      for (const e of entries as any[]) {
+        const md = (e.metadata ?? {}) as Record<string, unknown>;
+        const metaType = typeof md.entry_type === "string" ? md.entry_type : "";
+        const amountAbs = Math.abs(Number(e.amount ?? 0));
+        const entryType = metaType === "receita" || metaType === "despesa" ? metaType : Number(e.amount ?? 0) < 0 ? "despesa" : "receita";
+
+        if (entryType === "receita") receitasTotal += amountAbs;
+        else despesasTotal += amountAbs;
+
+        if (asksOpen && entryType === "receita") {
+          const paidFlag = md.paid === true;
+          const paidAmount = Number(md.paid_amount ?? 0) || 0;
+          const paidEffective = paidFlag ? amountAbs : Math.min(Math.max(paidAmount, 0), amountAbs);
+          const remaining = Math.max(0, amountAbs - paidEffective);
+          if (remaining > 0) {
+            openTotal += remaining;
+            openLines.push({ title: String(e.title ?? "(sem título)"), remaining });
+          }
+        }
+      }
+
+      openLines.sort((a, b) => b.remaining - a.remaining);
+      const topOpen = openLines.slice(0, 12).map((x) => `- ${x.title}: R$ ${x.remaining.toFixed(2)}`);
+
+      // (B) despesas (tabela) — admin-only
+      let expensesTotal = 0;
+      let expensesOpenTotal = 0;
+      if (isDespesas && role === "admin") {
+        const { data: exData, error: exErr } = await db
+          .from("expenses")
+          .select("id,name,amount,expense_date,paid,metadata")
+          .gte("expense_date", range.startDate)
+          .lt("expense_date", range.endDate);
+        if (!exErr) {
+          const expenses = Array.isArray(exData) ? (exData as any[]) : [];
+          for (const e of expenses) {
+            const total = Number(e.amount ?? 0) || 0;
+            expensesTotal += total;
+            const md = (e.metadata ?? {}) as Record<string, unknown>;
+            const paidAmount = Number(md.paid_amount ?? 0) || 0;
+            const paidEffective = e.paid ? total : Math.min(Math.max(paidAmount, 0), total);
+            const remaining = Math.max(0, total - paidEffective);
+            if (remaining > 0) expensesOpenTotal += remaining;
+          }
+        }
+      }
+
+      const scopeLabel = scopedService && scopedService !== "servicos_variados" ? ` (${scopedService})` : "";
+      const lines: string[] = [];
+      lines.push(`Miau! Resumo de ${monthKey}${scopeLabel}:`);
+      lines.push(`- Receitas: R$ ${receitasTotal.toFixed(2)}`);
+      lines.push(`- Despesas (lançamentos): R$ ${despesasTotal.toFixed(2)}`);
+
+      if (isDespesas && role !== "admin") {
+        lines.push("- Despesas (tabela despesas): acesso só do admin.");
+      }
+      if (isDespesas && role === "admin") {
+        lines.push(`- Despesas (tabela despesas): R$ ${expensesTotal.toFixed(2)} (em aberto: R$ ${expensesOpenTotal.toFixed(2)})`);
+      }
+
+      if (asksOpen) {
+        lines.push(`- Falta receber: R$ ${openTotal.toFixed(2)} (${openLines.length} pendência(s))`);
+        if (topOpen.length) lines.push(topOpen.join("\n"));
+        else lines.push("(Nenhuma pendência de recebimento)");
+      }
+
+      return json({ reply: lines.join("\n") });
+    }
+
     // 2) Perguntas gerais: chama IA (sem acesso direto ao banco, exceto o que o usuário perguntou acima)
     const system: ChatMessage = {
       role: "system",
       content:
-        "Você é a Chuvinha, a gatinha mascote da MV4 e agente financeira. Fale em pt-BR.\n\nPersonalidade: divertida, carinhosa, com jeitinho de gatinha (pode usar 'miau', trocadilhos leves e frases curtinhas), mas SEM exagero e SEM emojis.\n\nEstilo: objetiva, educada e prática. Quando faltar informação, faça 1-2 perguntas curtas. Não invente números.\n\nRegras: se a pergunta pedir dados do banco, você deve pedir a data/serviço/conta para que o sistema consulte; não finja que viu dados. Se a resposta for sobre permissão/role, explique de forma clara e amigável.",
+        "Você é a Chuvinha, a gatinha mascote da MV4 e agente financeira. Fale em pt-BR.\n\nPersonalidade: divertida, carinhosa, com jeitinho de gatinha (pode usar 'miau' e trocadilhos leves), mas SEM exagero e SEM emojis.\n\nEstilo: objetiva, educada e prática. Quando faltar informação, faça 1-2 perguntas curtas. Não invente números.\n\nContexto do app (importante):\n- Existe um filtro de mês (YYYY-MM) nas abas. Se o usuário estiver numa aba de serviço, o contexto pode incluir { service } e { month }.\n- Tabela service_entries guarda lançamentos de serviços (receitas e algumas despesas). Campos: service, title, amount (positivo=receita, negativo=despesa), entry_date, metadata. Em metadata: entry_type ('receita'|'despesa'), paid (boolean), paid_amount (número).\n- Tabela expenses guarda despesas (admin-only) com name, amount, expense_date, paid e metadata.paid_amount.\n- Tabela accounts_payable guarda contas a pagar (admin-only) com vendor, amount, due_date, status ('open'|'paid'|'canceled').\n- Roles: admin vê tudo; employee tem acesso restrito.\n\nRegras: se a pergunta pedir dados do banco e não vier data/mês, peça o mês (YYYY-MM) ou use o contexto se existir. Se pedir 'quem falta pagar', entenda como pendências (a receber ou a pagar) e pergunte se é por serviço/aba ou geral. Nunca finja que consultou dados se você não consultou.",
     };
 
     const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
