@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Expense } from "@/hooks/useExpenses";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { formatBRL, parseNumeric, type ExpenseKind } from "@/lib/domain";
+import { EXPENSE_KIND_LABEL, formatBRL, parseNumeric, type ExpenseKind } from "@/lib/domain";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -81,6 +81,7 @@ export function ExpenseDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
+  startInView?: boolean;
   initial?: Expense | null;
   onSubmit: (payload: {
     id?: string;
@@ -106,6 +107,19 @@ export function ExpenseDialog(props: {
   const { open, onOpenChange, initial } = props;
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit">("edit");
+
+  const paymentMethodLabel = (method: string) => {
+    const m = method.trim();
+    if (m === "pix") return "Pix";
+    if (m === "dinheiro") return "Dinheiro";
+    if (m === "cartao") return "Cartão";
+    if (m === "boleto") return "Boleto";
+    if (m === "a_prazo") return "A prazo";
+    if (m === "permuta") return "Permuta";
+    if (m === "outro") return "Outro";
+    return m;
+  };
 
   const effectiveId = useMemo(() => {
     return initial?.id ?? (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : undefined);
@@ -135,6 +149,8 @@ export function ExpenseDialog(props: {
     if (!open) return;
     setReceiptFile(null);
 
+    setMode(initial?.id && props.startInView ? "view" : "edit");
+
     const metadata = (initial?.metadata ?? {}) as Record<string, unknown>;
     const total = parseNumeric(initial?.amount) ?? 0;
     const metaPaidAmount = parseNumeric(metadata.paid_amount);
@@ -161,6 +177,34 @@ export function ExpenseDialog(props: {
       notes: initial?.notes ?? "",
     });
   }, [open, initial, form]);
+
+  const viewData = useMemo(() => {
+    if (!initial) return null;
+    const metadata = (initial.metadata ?? {}) as Record<string, unknown>;
+    const total = parseNumeric(initial.amount) ?? 0;
+    const paidAmountMeta = parseNumeric(metadata.paid_amount) ?? 0;
+    const paidAmountEffective =
+      total > 0
+        ? initial.paid
+          ? total
+          : Math.min(Math.max(paidAmountMeta, 0), total)
+        : 0;
+    const remaining = total > 0 ? Math.max(0, total - paidAmountEffective) : 0;
+    const isPaid = total > 0 ? remaining <= 0 : initial.paid;
+    const isPartial = !isPaid && paidAmountEffective > 0 && remaining > 0;
+
+    const kindLabel = initial.kind ? EXPENSE_KIND_LABEL[initial.kind as ExpenseKind] ?? initial.kind : "";
+
+    return {
+      kindLabel,
+      total,
+      paidAmountEffective,
+      remaining,
+      isPaid,
+      isPartial,
+      receiptPath: initial.receipt_url ? String(initial.receipt_url) : "",
+    };
+  }, [initial]);
 
   const handleSubmit = async (values: FormValues) => {
     const amountNumber = Number(values.amount.replace(/\./g, "").replace(",", "."));
@@ -230,12 +274,123 @@ export function ExpenseDialog(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        className="w-[calc(100vw-24px)] max-w-lg p-4 gap-3 top-[calc(env(safe-area-inset-top)+12px)] translate-y-0 max-h-[calc(100dvh-24px-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-hidden"
+      >
         <DialogHeader>
-          <DialogTitle>{initial ? "Editar despesa" : "Nova despesa"}</DialogTitle>
+          <DialogTitle>
+            {initial
+              ? mode === "view"
+                ? "Detalhes da despesa"
+                : "Editar despesa"
+              : "Nova despesa"}
+          </DialogTitle>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+        {mode === "view" && initial ? (
+          <>
+            <div className="space-y-3 overflow-y-auto pr-1">
+              <div className="space-y-1">
+                <Label>Tipo</Label>
+                <p className="text-sm">{viewData?.kindLabel || "-"}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Nome</Label>
+                <p className="text-sm">{initial.name || "-"}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label>Valor</Label>
+                  <p className="text-sm">{formatBRL(viewData?.total ?? 0)}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Data</Label>
+                  <p className="text-sm">{initial.expense_date || "-"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <p className="text-sm">
+                  {viewData?.isPaid
+                    ? "Pago"
+                    : viewData?.isPartial
+                      ? `Abatido: ${formatBRL(viewData.paidAmountEffective)} • Resta: ${formatBRL(viewData.remaining)}`
+                      : viewData && viewData.total > 0
+                        ? `Em aberto • Resta: ${formatBRL(viewData.remaining)}`
+                        : "Em aberto"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label>Vencimento</Label>
+                  <p className="text-sm">{initial.due_day ? `Dia ${initial.due_day}` : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Centro de custo</Label>
+                  <p className="text-sm">{initial.cost_center || "-"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label>Pagamento</Label>
+                  <p className="text-sm">
+                    {initial.payment_method ? paymentMethodLabel(initial.payment_method) : "-"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Parcelas</Label>
+                  <p className="text-sm">{initial.installments ? `${initial.installments}x` : "-"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Recorrente</Label>
+                <p className="text-sm">{initial.recurring ? initial.recurring_rule || "Sim" : "Não"}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Comprovante</Label>
+                {viewData?.receiptPath ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const path = viewData.receiptPath;
+                      if (!path) return;
+                      const { data, error } = await supabase.storage
+                        .from("expense_receipts")
+                        .createSignedUrl(path, 60);
+                      if (error) return;
+                      if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    Abrir
+                  </Button>
+                ) : (
+                  <p className="text-sm">-</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label>Observações</Label>
+                <p className="text-sm whitespace-pre-wrap">{initial.notes || "-"}</p>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" onClick={() => setMode("edit")}>
+                Editar
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form className="space-y-3" onSubmit={form.handleSubmit(handleSubmit)}>
           <div className="space-y-2">
             <Label>Tipo</Label>
             <Select
@@ -261,7 +416,7 @@ export function ExpenseDialog(props: {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
               <Label htmlFor="amount">Valor</Label>
               <Input id="amount" inputMode="decimal" placeholder="0,00" {...form.register("amount")} />
@@ -278,7 +433,7 @@ export function ExpenseDialog(props: {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
               <Label>Forma de pagamento (opcional)</Label>
               <Select
@@ -311,7 +466,7 @@ export function ExpenseDialog(props: {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
               <Label htmlFor="cost_center">Centro de custo (opcional)</Label>
               <Input id="cost_center" placeholder="Ex: Operacional" {...form.register("cost_center")} />
@@ -375,7 +530,7 @@ export function ExpenseDialog(props: {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
               <Label htmlFor="due_day">Vencimento (dia, opcional)</Label>
               <Input id="due_day" inputMode="numeric" placeholder="1-31" {...form.register("due_day")} />
@@ -427,7 +582,7 @@ export function ExpenseDialog(props: {
 
           <div className="space-y-2">
             <Label htmlFor="notes">Observações (opcional)</Label>
-            <Textarea id="notes" rows={3} {...form.register("notes")} />
+            <Textarea id="notes" rows={2} {...form.register("notes")} />
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -446,6 +601,7 @@ export function ExpenseDialog(props: {
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts_payable: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string
+          id: string
+          metadata: Json
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          status: string
+          vendor: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          status?: string
+          vendor: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          status?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string

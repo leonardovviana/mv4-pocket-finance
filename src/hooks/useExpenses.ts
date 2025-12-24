@@ -78,14 +78,12 @@ export function useUpsertExpense(userId: string) {
         metadata: payload.metadata,
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("expenses")
-        .upsert(insertPayload)
-        .select("*")
-        .single();
+        .upsert(insertPayload);
 
       if (error) throw error;
-      return data;
+      return;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });

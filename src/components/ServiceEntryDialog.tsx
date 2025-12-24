@@ -96,10 +96,10 @@ function clampMoney(value: number, min: number, max: number) {
 export function ServiceEntryDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
   config: ServiceEntryConfig;
   initial?: ServiceEntry | null;
   userId: string;
+  startInView?: boolean;
   onSubmit: (payload: {
     id?: string;
     title: string;
@@ -114,6 +114,8 @@ export function ServiceEntryDialog(props: {
   isDeleting?: boolean;
 }) {
   const { open, onOpenChange, initial } = props;
+
+  const [mode, setMode] = useState<"view" | "edit">("edit");
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
@@ -154,6 +156,8 @@ export function ServiceEntryDialog(props: {
   useEffect(() => {
     if (!open) return;
     setReceiptFile(null);
+
+    setMode(initial?.id && props.startInView ? "view" : "edit");
 
     const metadata = (initial?.metadata ?? {}) as Record<string, unknown>;
     const metaEntryType = typeof metadata.entry_type === "string" ? metadata.entry_type : "";
@@ -221,6 +225,61 @@ export function ServiceEntryDialog(props: {
       notes: initial?.notes ?? "",
     });
   }, [open, initial, form]);
+
+  const viewData = useMemo(() => {
+    if (!initial) return null;
+
+    const metadata = (initial.metadata ?? {}) as Record<string, unknown>;
+    const metaEntryType = typeof metadata.entry_type === "string" ? metadata.entry_type : "";
+    const parsedInitialAmount = parseNumeric(initial.amount);
+    const entryType =
+      metaEntryType === "receita" || metaEntryType === "despesa"
+        ? metaEntryType
+        : parsedInitialAmount !== null && Number.isFinite(parsedInitialAmount) && parsedInitialAmount < 0
+          ? "despesa"
+          : "receita";
+
+    const paidFlag = typeof metadata.paid === "boolean" ? metadata.paid : false;
+    const paymentMethod = typeof metadata.payment_method === "string" ? metadata.payment_method : "";
+    const installmentsRaw = metadata.installments;
+    const installments =
+      typeof installmentsRaw === "number" && Number.isFinite(installmentsRaw)
+        ? String(installmentsRaw)
+        : typeof installmentsRaw === "string"
+          ? installmentsRaw
+          : "";
+
+    const totalAbs = Math.abs(parseNumeric(initial.amount) ?? 0);
+    const paidAmountMeta = parseNumeric(metadata.paid_amount) ?? 0;
+    const paidAmountEffective =
+      totalAbs > 0
+        ? paidFlag
+          ? totalAbs
+          : Math.min(Math.max(paidAmountMeta, 0), totalAbs)
+        : 0;
+    const remaining = totalAbs > 0 ? Math.max(0, totalAbs - paidAmountEffective) : 0;
+    const isPaid = totalAbs > 0 ? remaining <= 0 : paidFlag;
+    const isPartial = !isPaid && paidAmountEffective > 0 && remaining > 0;
+
+    const receiptPath = typeof metadata.receipt_path === "string" ? metadata.receipt_path : "";
+
+    const paymentLabel = isPaid
+      ? "Pago"
+      : isPartial
+        ? `Abatido: ${formatBRL(paidAmountEffective)} • Resta: ${formatBRL(remaining)}`
+        : totalAbs > 0
+          ? `Em aberto • Resta: ${formatBRL(remaining)}`
+          : "Em aberto";
+
+    return {
+      metadata,
+      entryType,
+      paymentLabel,
+      paymentMethod,
+      installments,
+      receiptPath,
+    };
+  }, [initial]);
 
   const handleSubmit = async (values: FormValues) => {
     const parsedAmount = values.amount
@@ -340,10 +399,125 @@ export function ServiceEntryDialog(props: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{props.title}</DialogTitle>
+          <DialogTitle>
+            {initial
+              ? mode === "view"
+                ? "Detalhes do registro"
+                : "Editar registro"
+              : "Novo registro"}
+          </DialogTitle>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+        {mode === "view" && initial && viewData ? (
+          <>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label>{props.config.titleLabel}</Label>
+                <p className="text-sm">{initial.title || "-"}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Tipo</Label>
+                  <p className="text-sm">{viewData.entryType === "despesa" ? "Despesa" : "Receita"}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>{props.config.amountLabel ?? "Valor"}</Label>
+                  <p className="text-sm">
+                    {(() => {
+                      const n = parseNumeric(initial.amount);
+                      if (n === null) return "-";
+                      return formatBRL(Math.abs(n));
+                    })()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label>{props.config.entryDateLabel ?? "Data"}</Label>
+                <p className="text-sm">{initial.entry_date || "-"}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <p className="text-sm">{viewData.paymentLabel}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Forma de pagamento</Label>
+                  <p className="text-sm">{viewData.paymentMethod ? viewData.paymentMethod : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Parcelas</Label>
+                  <p className="text-sm">{viewData.installments ? `${viewData.installments}x` : "-"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Comprovante</Label>
+                {viewData.receiptPath ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const path = viewData.receiptPath;
+                      if (!path) return;
+                      const { data, error } = await supabase.storage
+                        .from("service_entry_receipts")
+                        .createSignedUrl(path, 60);
+                      if (error) return;
+                      if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    Abrir
+                  </Button>
+                ) : (
+                  <p className="text-sm">-</p>
+                )}
+              </div>
+
+              {props.config.extraFields.map((f) => {
+                const v = (viewData.metadata ?? {})[f.key];
+                const s =
+                  typeof v === "string"
+                    ? v
+                    : typeof v === "number" && Number.isFinite(v)
+                      ? String(v)
+                      : typeof v === "boolean"
+                        ? v
+                          ? "Sim"
+                          : "Não"
+                        : "";
+                if (!s) return null;
+                return (
+                  <div key={f.key} className="space-y-1">
+                    <Label>{f.label}</Label>
+                    <p className="text-sm">{s}</p>
+                  </div>
+                );
+              })}
+
+              <div className="space-y-1">
+                <Label>Status (campo)</Label>
+                <p className="text-sm">{initial.status || "-"}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Observações</Label>
+                <p className="text-sm whitespace-pre-wrap">{initial.notes || "-"}</p>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" onClick={() => setMode("edit")}>
+                Editar
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
           <div className="space-y-2">
             <Label htmlFor="title">{props.config.titleLabel}</Label>
             <Input id="title" placeholder={props.config.titlePlaceholder} {...form.register("title")} />
@@ -557,6 +731,7 @@ export function ServiceEntryDialog(props: {
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

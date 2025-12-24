@@ -11,6 +11,7 @@ import {
     createSignedChatAttachmentUrl,
     useAttachToMessage,
     useChatRealtime,
+    useChatRealtimeFast,
     useMessages,
     usePublicConversationId,
     useSendMessage,
@@ -18,6 +19,7 @@ import {
 } from "@/hooks/useChat";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/domain";
+import { requestNotificationPermissionOnce, showNotificationSafely } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { Loader2, MessageCircle, Paperclip, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -30,48 +32,6 @@ function parseAmountBR(values: string) {
   const normalized = values.replace(/\./g, "").replace(",", ".");
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-async function showNotificationSafely(payload: {
-  title: string;
-  body?: string;
-  url?: string;
-  tag?: string;
-  requireInteraction?: boolean;
-}) {
-  if (typeof window === "undefined") return;
-  if (!("Notification" in window)) return;
-  if (Notification.permission !== "granted") return;
-
-  const options: any = {
-    body: payload.body,
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    tag: payload.tag,
-    requireInteraction: payload.requireInteraction,
-    data: { url: payload.url ?? "/chat" },
-  };
-
-  try {
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(payload.title, options);
-      return;
-    }
-  } catch {
-    // fallback abaixo
-  }
-
-  try {
-    const n = new Notification(payload.title, options);
-    n.onclick = () => {
-      const target = payload.url ?? "/chat";
-      window.focus();
-      window.location.assign(target);
-    };
-  } catch {
-    // ignore
-  }
 }
 
 function getSenderName(msg: ChatMessageWithAttachments) {
@@ -266,60 +226,62 @@ export default function Chat() {
   // Pede permissão de notificações (uma vez por dispositivo)
   useEffect(() => {
     if (!userId) return;
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window)) return;
-    const key = "mv4:pwa:chat-notifications-asked";
-    const asked = localStorage.getItem(key) === "1";
-    if (asked) return;
-
-    localStorage.setItem(key, "1");
-    if (Notification.permission === "default") {
-      void Notification.requestPermission();
-    }
+    requestNotificationPermissionOnce("mv4:pwa:chat-notifications-asked");
   }, [userId]);
 
-  // Notifica apenas novas mensagens no Chat Público quando o app estiver em segundo plano
-  const lastSeenMessageIdRef = useRef<string | null>(null);
-  const initializedRef = useRef(false);
-
+  // Notifica via realtime (mais rápido que esperar refetch)
+  const initializedFastRef = useRef(false);
   useEffect(() => {
-    const msgs = messagesQuery.data ?? [];
-    if (!activeConversationId || !userId) return;
-    if (msgs.length === 0) return;
-
-    // primeira carga: não notifica
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      lastSeenMessageIdRef.current = msgs[msgs.length - 1]?.id ?? null;
-      return;
+    if (!activeConversationId) return;
+    if (!userId) return;
+    // depois que a lista inicial carregou, pode notificar novos INSERTs
+    if ((messagesQuery.data ?? []).length > 0) {
+      initializedFastRef.current = true;
     }
+  }, [activeConversationId, userId, messagesQuery.data?.length]);
 
-    const lastSeenId = lastSeenMessageIdRef.current;
-    const idx = lastSeenId ? msgs.findIndex((m) => m.id === lastSeenId) : -1;
-    const newMsgs = idx >= 0 ? msgs.slice(idx + 1) : [msgs[msgs.length - 1]];
-    if (newMsgs.length === 0) return;
+  useChatRealtimeFast(activeConversationId ?? undefined, (msg) => {
+      if (!userId) return;
+      if (!activeConversationId) return;
+      if (msg.sender_id === userId) return;
 
-    lastSeenMessageIdRef.current = msgs[msgs.length - 1]?.id ?? lastSeenMessageIdRef.current;
+      // primeira carga: não notifica
+      if (!initializedFastRef.current) {
+        initializedFastRef.current = true;
+        return;
+      }
 
-    // se estiver ativo/aberto, não notifica
-    if (typeof document !== "undefined") {
-      const active = document.visibilityState === "visible" && (typeof document.hasFocus === "function" ? document.hasFocus() : true);
-      if (active) return;
-    }
+      // se estiver ativo/aberto, não notifica
+      if (typeof document !== "undefined") {
+        const active =
+          document.visibilityState === "visible" &&
+          (typeof document.hasFocus === "function" ? document.hasFocus() : true);
+        if (active) return;
+      }
 
-    const lastNew = newMsgs[newMsgs.length - 1];
-    if (!lastNew) return;
-    if (lastNew.sender_id === userId) return;
+      const meta = (msg.metadata ?? {}) as Record<string, unknown>;
+      const bodyText = typeof msg.body === "string" ? msg.body.trim() : "";
 
-    const notif = getNotificationText(lastNew);
-    void showNotificationSafely({
-      title: notif.title,
-      body: notif.body,
-      url: "/chat",
-      tag: `chat:${activeConversationId}`,
-      requireInteraction: notif.requireInteraction,
-    });
-  }, [messagesQuery.data, activeConversationId, userId]);
+      const requireInteraction = msg.kind === "payment_request";
+      const title = requireInteraction ? "Solicitação de pagamento" : "Nova mensagem";
+      const body =
+        msg.kind === "payment_request"
+          ? [
+              typeof meta.description === "string" ? meta.description : null,
+              typeof meta.amount === "number" ? formatBRL(meta.amount) : null,
+            ]
+              .filter(Boolean)
+              .join(" • ") || "Nova solicitação"
+          : bodyText || "Nova atividade";
+
+      void showNotificationSafely({
+        title,
+        body,
+        url: "/chat",
+        tag: `chat:${activeConversationId}`,
+        requireInteraction,
+      });
+  });
 
   const canSend = Boolean(activeConversationId) && (composeText.trim() || attachFile);
 

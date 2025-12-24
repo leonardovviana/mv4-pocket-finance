@@ -1,4 +1,5 @@
 import logo from '@/assets/logo.png';
+import logo2 from '@/assets/logo2.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Lock, Mail, User } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -15,6 +17,7 @@ const passwordSchema = z.string().min(6, 'Senha deve ter pelo menos 6 caracteres
 const nameSchema = z.string().min(2, 'Nome deve ter pelo menos 2 caracteres');
 
 export default function Auth() {
+  const { resolvedTheme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -127,7 +130,7 @@ export default function Auth() {
         {/* Logo */}
         <div className="text-center mb-8">
           <img
-            src={logo}
+            src={resolvedTheme === 'light' ? logo2 : logo}
             alt="MV4 Agência"
             className="mx-auto mb-4 h-16 w-auto max-w-full"
           />

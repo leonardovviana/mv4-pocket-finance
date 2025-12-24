@@ -1,29 +1,29 @@
 import { ChuvinhaChatPanel } from "@/components/ChuvinhaChatPanel";
-import { ExpensesSection } from "@/components/ExpensesSection";
 import { IOSPage } from "@/components/IOSPage";
 import { MonthFilter } from "@/components/MonthFilter";
 import { PageInsightsTabs } from "@/components/PageInsightsTabs";
-import { ExpensesCharts, ExpensesReport } from "@/components/analytics/ExpensesAnalytics";
+import { PayablesSection } from "@/components/PayablesSection";
+import { PayablesCharts, PayablesReport } from "@/components/analytics/PayablesAnalytics";
 import { useAuth } from "@/hooks/useAuth";
 import { useMonthFilter } from "@/hooks/useMonthFilter";
 
-export default function Despesas() {
+export default function ContasAPagar() {
   const { user } = useAuth();
   const { selectedMonth } = useMonthFilter();
-  const storageKey = user ? `chuvinha_page_despesas_${user.id}` : "chuvinha_page_despesas";
+  const storageKey = user ? `chuvinha_page_contas_a_pagar_${user.id}` : "chuvinha_page_contas_a_pagar";
 
   return (
-    <IOSPage title="Despesas">
+    <IOSPage title="Contas a pagar">
       <MonthFilter />
       <PageInsightsTabs
-        data={<ExpensesSection />}
-        charts={<ExpensesCharts />}
-        report={<ExpensesReport />}
+        data={<PayablesSection showMonthFilter={false} />}
+        charts={<PayablesCharts />}
+        report={<PayablesReport />}
         ai={
           <ChuvinhaChatPanel
             storageKey={storageKey}
-            context={{ page: "Despesas", month: selectedMonth }}
-            placeholder='Ex: "Quais despesas mais pesaram nesse mês?"'
+            context={{ page: "Contas a pagar", month: selectedMonth }}
+            placeholder='Ex: "Tem contas atrasadas?"'
           />
         }
       />

@@ -84,21 +84,17 @@ export function useUpsertServiceEntry(service: ServiceKey, userId: string) {
         metadata: payload.metadata,
       };
 
-      const { data, error } = payload.id
+      const { error } = payload.id
         ? await supabase
             .from("service_entries")
             .update(basePayload)
             .eq("id", payload.id)
-            .select("*")
-            .single()
         : await supabase
             .from("service_entries")
-          .insert({ id: payload.id, user_id: userId, service, ...basePayload })
-            .select("*")
-            .single();
+            .insert({ id: payload.id, user_id: userId, service, ...basePayload });
 
       if (error) throw error;
-      return data;
+      return;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["service_entries", service] });

@@ -1,17 +1,18 @@
 import { useProfileRole } from "@/hooks/useProfileRole";
 import { cn } from "@/lib/utils";
 import {
-  Award,
-  BookOpen,
-  Briefcase,
-  Heart,
-  LayoutDashboard,
-  MessageCircle,
-  Share2,
-  Trophy,
-  User,
-  Volume2,
-  Wallet
+    Award,
+    BookOpen,
+    Briefcase,
+    CreditCard,
+    Heart,
+    LayoutDashboard,
+    MessageCircle,
+    Share2,
+    Trophy,
+    User,
+    Volume2,
+    Wallet
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -32,6 +33,7 @@ const adminTabs: TabItem[] = [
   { id: "saude", label: "Saúde", icon: Heart, path: "/saude" },
   { id: "servicos", label: "Serviços", icon: Briefcase, path: "/servicos" },
   { id: "despesas", label: "Despesas", icon: Wallet, path: "/despesas" },
+  { id: "contas", label: "A pagar", icon: CreditCard, path: "/contas-a-pagar" },
   { id: "chat", label: "Chat", icon: MessageCircle, path: "/chat" },
   { id: "perfil", label: "Perfil", icon: User, path: "/perfil" },
 ];

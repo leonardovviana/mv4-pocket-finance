@@ -1,5 +1,6 @@
 import { ChuvinhaFab } from "@/components/ChuvinhaFab";
 import { IOSTabBar } from "@/components/IOSTabBar";
+import { PayablesNotifier } from "@/components/PayablesNotifier";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGate } from "@/components/RoleGate";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -16,6 +17,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Auth from "./pages/Auth";
 import CarroSom from "./pages/CarroSom";
 import Chat from "./pages/Chat";
+import ContasAPagar from "./pages/ContasAPagar";
 import Dashboard from "./pages/Dashboard";
 import Despesas from "./pages/Despesas";
 import Funcionario from "./pages/Funcionario";
@@ -58,6 +60,7 @@ const App = () => (
             <AuthProvider>
               <MonthFilterProvider>
                 <div className="min-h-screen bg-background">
+                  <PayablesNotifier />
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
 
@@ -158,6 +161,16 @@ const App = () => (
                         <ProtectedRoute>
                           <RoleGate allow={["admin"]} redirectTo="/funcionario">
                             <Despesas />
+                          </RoleGate>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/contas-a-pagar"
+                      element={
+                        <ProtectedRoute>
+                          <RoleGate allow={["admin"]} redirectTo="/funcionario">
+                            <ContasAPagar />
                           </RoleGate>
                         </ProtectedRoute>
                       }

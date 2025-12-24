@@ -3,6 +3,7 @@ import { IOSStatCard } from "@/components/IOSStatCard";
 import { MonthFilter } from "@/components/MonthFilter";
 import { ServiceEntryDialog } from "@/components/ServiceEntryDialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMonthFilter } from "@/hooks/useMonthFilter";
 import type { ServiceEntry } from "@/hooks/useServiceEntries";
@@ -95,9 +96,11 @@ function formatSubtitle(entry: ServiceEntry, service: ServiceKey) {
   return parts.filter(Boolean).join(" • ");
 }
 
-export function ServiceEntriesSection(props: { service: ServiceKey }) {
+export function ServiceEntriesSection(props: { service: ServiceKey; showMonthFilter?: boolean }) {
   const { user } = useAuth();
   const userId = user?.id;
+
+  const { toast } = useToast();
 
   const { selectedMonth } = useMonthFilter();
 
@@ -121,7 +124,7 @@ export function ServiceEntriesSection(props: { service: ServiceKey }) {
 
   return (
     <>
-      <MonthFilter />
+      {props.showMonthFilter === false ? null : <MonthFilter />}
 
       <div className="grid grid-cols-2 gap-3">
         <IOSStatCard
@@ -200,22 +203,40 @@ export function ServiceEntriesSection(props: { service: ServiceKey }) {
           setOpen(next);
           if (!next) setEditing(null);
         }}
-        title={editing ? "Editar registro" : "Novo registro"}
         config={config}
         initial={editing}
         userId={userId ?? ""}
+        startInView={Boolean(editing)}
         isSaving={upsert.isPending}
         isDeleting={del.isPending}
         onSubmit={async (payload) => {
           if (!userId) return;
-          await upsert.mutateAsync(payload);
+          try {
+            await upsert.mutateAsync(payload);
+          } catch (e: any) {
+            toast({
+              title: "Não foi possível salvar",
+              description: e?.message ?? "Falha ao salvar no banco",
+              variant: "destructive",
+            });
+            throw e;
+          }
         }}
         onDelete={
           editing?.id
             ? async (id) => {
-                await del.mutateAsync(id);
-                setOpen(false);
-                setEditing(null);
+                try {
+                  await del.mutateAsync(id);
+                  setOpen(false);
+                  setEditing(null);
+                } catch (e: any) {
+                  toast({
+                    title: "Não foi possível apagar",
+                    description: e?.message ?? "Falha ao apagar",
+                    variant: "destructive",
+                  });
+                  throw e;
+                }
               }
             : undefined
         }

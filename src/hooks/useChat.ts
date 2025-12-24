@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export type ChatConversation = Tables<"chat_conversations">;
 export type ChatParticipant = Tables<"chat_participants">;
@@ -139,15 +139,56 @@ export function useChatRealtime(conversationId?: string) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages", filter: `conversation_id=eq.${conversationId}` },
-        async () => {
-          await queryClient.invalidateQueries({ queryKey: ["chat", "messages", conversationId] });
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["chat", "messages", conversationId] });
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_message_attachments" },
-        async () => {
-          await queryClient.invalidateQueries({ queryKey: ["chat", "messages", conversationId] });
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["chat", "messages", conversationId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [conversationId, queryClient]);
+}
+
+export function useChatRealtimeFast(
+  conversationId: string | undefined,
+  onMessageInserted?: (msg: ChatMessage) => void
+) {
+  const queryClient = useQueryClient();
+  const onInsertedRef = useRef(onMessageInserted);
+
+  useEffect(() => {
+    onInsertedRef.current = onMessageInserted;
+  }, [onMessageInserted]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`chat-fast:${conversationId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages", filter: `conversation_id=eq.${conversationId}` },
+        (payload) => {
+          const msg = (payload as any)?.new as ChatMessage | undefined;
+          if (msg) {
+            try {
+              onInsertedRef.current?.(msg);
+            } catch {
+              // ignore
+            }
+          }
+
+          // Mantém UI consistente (sender/attachments são resolvidos pelo query)
+          void queryClient.invalidateQueries({ queryKey: ["chat", "messages", conversationId] });
         }
       )
       .subscribe();
@@ -169,7 +210,7 @@ export function useSendMessage() {
       body: string | null;
       metadata: Json;
     }) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("chat_messages")
         .insert({
           conversation_id: payload.conversation_id,
@@ -177,14 +218,12 @@ export function useSendMessage() {
           kind: payload.kind,
           body: payload.body,
           metadata: payload.metadata,
-        })
-        .select("*")
-        .single();
+        });
       if (error) throw error;
-      return data;
+      return;
     },
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ["chat", "messages", data.conversation_id] });
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["chat", "messages", variables.conversation_id] });
     },
   });
 }
@@ -200,13 +239,9 @@ export function useAttachToMessage() {
       mime_type: string | null;
       size_bytes: number | null;
     }) => {
-      const { data, error } = await supabase
-        .from("chat_message_attachments")
-        .insert(payload)
-        .select("*")
-        .single();
+      const { error } = await supabase.from("chat_message_attachments").insert(payload);
       if (error) throw error;
-      return data;
+      return;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["chat", "messages"] });

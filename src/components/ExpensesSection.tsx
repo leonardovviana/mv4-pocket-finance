@@ -2,6 +2,7 @@ import { ExpenseDialog } from "@/components/ExpenseDialog";
 import { IOSCardGroup, IOSListItem, IOSSectionHeader } from "@/components/IOSCard";
 import { IOSStatCard } from "@/components/IOSStatCard";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { Expense } from "@/hooks/useExpenses";
 import { useDeleteExpense, useExpenses, useUpsertExpense } from "@/hooks/useExpenses";
@@ -37,6 +38,8 @@ function getExpensePaymentInfo(expense: Expense) {
 export function ExpensesSection() {
   const { user } = useAuth();
   const userId = user?.id;
+
+  const { toast } = useToast();
 
   const { selectedMonth } = useMonthFilter();
 
@@ -171,19 +174,38 @@ export function ExpensesSection() {
           if (!next) setEditing(null);
         }}
         userId={userId ?? ""}
+        startInView={Boolean(editing)}
         initial={editing}
         isSaving={upsert.isPending}
         isDeleting={del.isPending}
         onSubmit={async (payload) => {
           if (!userId) return;
-          await upsert.mutateAsync(payload);
+          try {
+            await upsert.mutateAsync(payload);
+          } catch (e: any) {
+            toast({
+              title: "Não foi possível salvar",
+              description: e?.message ?? "Falha ao salvar no banco",
+              variant: "destructive",
+            });
+            throw e;
+          }
         }}
         onDelete={
           editing?.id
             ? async (id) => {
-                await del.mutateAsync(id);
-                setOpen(false);
-                setEditing(null);
+                try {
+                  await del.mutateAsync(id);
+                  setOpen(false);
+                  setEditing(null);
+                } catch (e: any) {
+                  toast({
+                    title: "Não foi possível apagar",
+                    description: e?.message ?? "Falha ao apagar",
+                    variant: "destructive",
+                  });
+                  throw e;
+                }
               }
             : undefined
         }
