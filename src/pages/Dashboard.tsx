@@ -9,41 +9,47 @@ import { useAuth } from '@/hooks/useAuth';
 import { CASH_ACCOUNTS, type CashAccountKey, useCashBalances, useUpsertCashBalances } from '@/hooks/useCashBalances';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useMonthFilter } from '@/hooks/useMonthFilter';
+import { useProfileRole } from '@/hooks/useProfileRole';
 import { useAllServiceEntries } from '@/hooks/useServiceEntries';
 import { SERVICE_LABEL, formatBRL, parseNumeric } from '@/lib/domain';
 import { addMonths, format, formatDistanceToNow, isWithinInterval, parseISO, startOfDay, startOfMonth, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  ArrowUpRight,
-  DollarSign,
-  FileText,
-  TrendingDown,
-  TrendingUp
+    ArrowUpRight,
+    DollarSign,
+    FileText,
+    TrendingDown,
+    TrendingUp
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from 'recharts';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const userId = user?.id;
 
+  const roleQuery = useProfileRole();
+  const role = roleQuery.data ?? 'employee';
+  const isAdmin = role === 'admin';
+
   const { toast } = useToast();
 
-  const cashBalancesQuery = useCashBalances(userId);
-  const upsertCashBalances = useUpsertCashBalances(userId);
+  const cashUserId = isAdmin ? userId : undefined;
+  const cashBalancesQuery = useCashBalances(cashUserId);
+  const upsertCashBalances = useUpsertCashBalances(cashUserId);
   const [cashBalances, setCashBalances] = useState<Record<CashAccountKey, string>>(() =>
     Object.fromEntries(CASH_ACCOUNTS.map((a) => [a.key, '0,00'])) as Record<CashAccountKey, string>,
   );
@@ -243,96 +249,98 @@ export default function Dashboard() {
       <div className="space-y-6 pb-8">
         <MonthFilter />
 
-        <IOSCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="ios-headline text-foreground">Saldo em caixa</h3>
-              <p className="text-xs text-muted-foreground">Atualize manualmente (não é calculado)</p>
+        {isAdmin ? (
+          <IOSCard className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="ios-headline text-foreground">Saldo em caixa</h3>
+                <p className="text-xs text-muted-foreground">Atualize manualmente (não é calculado)</p>
+              </div>
+              <Button
+                size="sm"
+                disabled={!cashUserId || upsertCashBalances.isPending}
+                onClick={async () => {
+                  try {
+                    await upsertCashBalances.mutateAsync(
+                      CASH_ACCOUNTS.map((a) => ({ account: a.key, balance: cashBalances[a.key] ?? '0' })),
+                    );
+                    toast({ title: 'Saldos atualizados' });
+                  } catch (e: any) {
+                    toast({ title: 'Erro ao salvar', description: e?.message ?? String(e), variant: 'destructive' });
+                  }
+                }}
+              >
+                Salvar
+              </Button>
             </div>
-            <Button
-              size="sm"
-              disabled={!userId || upsertCashBalances.isPending}
-              onClick={async () => {
-                try {
-                  await upsertCashBalances.mutateAsync(
-                    CASH_ACCOUNTS.map((a) => ({ account: a.key, balance: cashBalances[a.key] ?? '0' })),
-                  );
-                  toast({ title: 'Saldos atualizados' });
-                } catch (e: any) {
-                  toast({ title: 'Erro ao salvar', description: e?.message ?? String(e), variant: 'destructive' });
-                }
-              }}
-            >
-              Salvar
-            </Button>
-          </div>
 
-          <IOSCardGroup>
-            {CASH_ACCOUNTS.map((a) => (
-              <IOSListItem
-                key={a.key}
-                icon={null}
-                iconBgColor="bg-secondary"
-                title={a.label}
-                value={
-                  <div className="flex items-center justify-end gap-2">
-                    {editingCashKey === a.key ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          inputMode="decimal"
-                          placeholder="0,00"
-                          value={cashBalances[a.key] ?? ''}
-                          onChange={(e) => setCashBalances((prev) => ({ ...prev, [a.key]: e.target.value }))}
-                          className="h-8 w-[128px] text-right"
-                          autoFocus
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2"
-                          onClick={() => setEditingCashKey(null)}
-                        >
-                          OK
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-muted-foreground"
-                          onClick={() => {
-                            setCashBalances((prev) => ({ ...prev, [a.key]: editingInitialValue }));
-                            setEditingCashKey(null);
-                          }}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="ios-subheadline font-semibold tabular-nums text-foreground whitespace-nowrap max-w-[140px] truncate">
-                          {formatBRL(parseNumeric(cashBalances[a.key] ?? '0') ?? 0)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-muted-foreground"
-                          onClick={() => {
-                            setEditingInitialValue(cashBalances[a.key] ?? '');
-                            setEditingCashKey(a.key);
-                          }}
-                        >
-                          Editar
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                }
-              />
-            ))}
-          </IOSCardGroup>
-        </IOSCard>
+            <IOSCardGroup>
+              {CASH_ACCOUNTS.map((a) => (
+                <IOSListItem
+                  key={a.key}
+                  icon={null}
+                  iconBgColor="bg-secondary"
+                  title={a.label}
+                  value={
+                    <div className="flex items-center justify-end gap-2">
+                      {editingCashKey === a.key ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            value={cashBalances[a.key] ?? ''}
+                            onChange={(e) => setCashBalances((prev) => ({ ...prev, [a.key]: e.target.value }))}
+                            className="h-8 w-[128px] text-right"
+                            autoFocus
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2"
+                            onClick={() => setEditingCashKey(null)}
+                          >
+                            OK
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-muted-foreground"
+                            onClick={() => {
+                              setCashBalances((prev) => ({ ...prev, [a.key]: editingInitialValue }));
+                              setEditingCashKey(null);
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="ios-subheadline font-semibold tabular-nums text-foreground whitespace-nowrap max-w-[140px] truncate">
+                            {formatBRL(parseNumeric(cashBalances[a.key] ?? '0') ?? 0)}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-muted-foreground"
+                            onClick={() => {
+                              setEditingInitialValue(cashBalances[a.key] ?? '');
+                              setEditingCashKey(a.key);
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  }
+                />
+              ))}
+            </IOSCardGroup>
+          </IOSCard>
+        ) : null}
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 gap-3">
