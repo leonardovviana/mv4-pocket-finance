@@ -9,6 +9,7 @@ type RequestBody =
       mode: "chat";
       message: string;
       history?: ChatMessage[];
+      context?: unknown;
     }
   | {
       mode: "import_suggest";
@@ -101,9 +102,9 @@ function detectPaid(input: string): boolean {
 
 function detectRecurringRule(input: string): string | null {
   const t = normalizeText(input);
-  if (/mensal/.test(t)) return "mensal";
-  if (/semanal/.test(t)) return "semanal";
-  if (/anual/.test(t)) return "anual";
+  if (/(mensal|mensais)/.test(t)) return "mensal";
+  if (/(semanal|semanais)/.test(t)) return "semanal";
+  if (/(anual|anuais)/.test(t)) return "anual";
   return null;
 }
 
@@ -117,9 +118,38 @@ function extractTitleAfterVerb(input: string): string | null {
   let rest = raw.replace(/^(\s*)(cadastre|cadastrar)\b/i, "").trim();
   rest = rest.replace(/^[:\-]+\s*/, "").trim();
 
-  const cut = rest.search(/\b(valor|r\$|mensal|semanal|anual|em\s+|para\s+|no\s+|na\s+|ainda\s+|ja\s+|pago|pagou|nao\s+pagou|não\s+pagou)\b/i);
+  const cutCandidates: number[] = [];
+
+  const moneyLike = rest.search(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?/i);
+  if (moneyLike >= 0) cutCandidates.push(moneyLike);
+
+  const keywords = rest.search(
+    /\b(valor|r\$|mensal|mensais|semanal|semanais|anual|anuais|em\s+|para\s+|no\s+|na\s+|ainda\s+|ja\s+|pago|pagou|nao\s+pagou|não\s+pagou)\b/i
+  );
+  if (keywords >= 0) cutCandidates.push(keywords);
+
+  const cut = cutCandidates.length ? Math.min(...cutCandidates) : -1;
   const title = (cut >= 0 ? rest.slice(0, cut) : rest).trim();
   return title ? title : null;
+}
+
+function isServiceKey(v: unknown): v is
+  | "gestao_midias"
+  | "melhores_do_ano"
+  | "premio_excelencia"
+  | "carro_de_som"
+  | "revista_factus"
+  | "revista_saude"
+  | "servicos_variados" {
+  return (
+    v === "gestao_midias" ||
+    v === "melhores_do_ano" ||
+    v === "premio_excelencia" ||
+    v === "carro_de_som" ||
+    v === "revista_factus" ||
+    v === "revista_saude" ||
+    v === "servicos_variados"
+  );
 }
 
 async function openAiChat(params: {
@@ -226,11 +256,15 @@ Deno.serve(async (req) => {
     const question = body.message?.trim();
     if (!question) return badRequest("Mensagem vazia");
 
+    const rawContext = (body as any)?.context as any;
+    const contextService = isServiceKey(rawContext?.service) ? (rawContext.service as any) : null;
+
     // 0) Comandos de cadastro
     if (/^(\s*)(cadastre|cadastrar)\b/i.test(question)) {
       const amount = parseMoneyBRLFromText(question);
       const title = extractTitleAfterVerb(question);
-      const service = detectServiceKey(question);
+      const detectedService = detectServiceKey(question);
+      const service = detectedService !== "servicos_variados" ? detectedService : (contextService ?? detectedService);
       const recurringRule = detectRecurringRule(question);
       const paid = detectPaid(question);
       const entryDate = new Date().toISOString().slice(0, 10);
@@ -269,8 +303,7 @@ Deno.serve(async (req) => {
           notes: null,
           metadata,
         })
-        .select("id")
-        .single();
+        .select("id");
 
       if (insertError) {
         return json({
@@ -281,9 +314,10 @@ Deno.serve(async (req) => {
 
       const paidLabel = paid ? "pago" : "em aberto";
       const recLabel = recurringRule ? ` (${recurringRule})` : "";
+      const insertedId = Array.isArray(inserted) ? inserted?.[0]?.id : (inserted as any)?.id;
       return json({
         reply:
-          `Miau! Cadastrei pra você: '${title}' em ${service}, R$ ${amount.toFixed(2)}${recLabel}, ${paidLabel}. (id: ${inserted?.id})`,
+          `Miau! Cadastrei pra você: '${title}' em ${service}, R$ ${amount.toFixed(2)}${recLabel}, ${paidLabel}. (id: ${insertedId ?? "-"})`,
       });
     }
 
