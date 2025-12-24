@@ -63,7 +63,7 @@ export function useUpsertCashBalances(userId: string | undefined) {
       const payload = values.map((v) => ({
         user_id: userId,
         account: v.account,
-        balance: parseBalanceInput(v.balance),
+        balance: Number(parseBalanceInput(v.balance)),
       }));
 
       const { error } = await supabase
