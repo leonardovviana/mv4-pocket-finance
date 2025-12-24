@@ -39,25 +39,48 @@ export function useServiceEntries(service: ServiceKey, userId?: string, monthKey
     queryKey: ["service_entries", service, monthKey ?? "all"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const q = supabase
+      const base = supabase
         .from("service_entries")
         .select("*")
-        .eq("service", service)
-        .order("entry_date", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false });
+        .eq("service", service);
 
-      const { startDate, endDate, startTs, endTs } = monthKey
-        ? monthRange(monthKey)
-        : ({ startDate: null, endDate: null, startTs: null, endTs: null } as const);
+      if (!monthKey) {
+        const { data, error } = await base
+          .order("entry_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return data ?? [];
+      }
 
-      const { data, error } = monthKey
-        ? await q.or(
-            `and(entry_date.gte.${startDate},entry_date.lt.${endDate}),and(entry_date.is.null,created_at.gte.${startTs},created_at.lt.${endTs})`
-          )
-        : await q;
+      const { startDate, endDate, startTs, endTs } = monthRange(monthKey);
 
-      if (error) throw error;
-      return data ?? [];
+      // Query 1: itens com entry_date preenchido
+      const q1 = base
+        .gte("entry_date", startDate)
+        .lt("entry_date", endDate);
+
+      // Query 2: itens sem entry_date (fallback para created_at)
+      const q2 = base
+        .is("entry_date", null)
+        .gte("created_at", startTs)
+        .lt("created_at", endTs);
+
+      const [{ data: d1, error: e1 }, { data: d2, error: e2 }] = await Promise.all([q1, q2]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+
+      const merged = [...(d1 ?? []), ...(d2 ?? [])];
+      const byId = new Map<string, ServiceEntry>();
+      for (const row of merged) byId.set(row.id, row);
+
+      const result = Array.from(byId.values());
+      result.sort((a, b) => {
+        const ad = a.entry_date ?? a.created_at;
+        const bd = b.entry_date ?? b.created_at;
+        return String(bd).localeCompare(String(ad));
+      });
+
+      return result;
     },
   });
 }

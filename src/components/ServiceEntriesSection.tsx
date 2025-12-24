@@ -158,6 +158,13 @@ export function ServiceEntriesSection(props: { service: ServiceKey; showMonthFil
       <IOSCardGroup>
         {entriesQuery.isLoading ? (
           <IOSListItem icon={<FileText className="w-4 h-4" />} iconBgColor="bg-secondary" title="Carregando..." />
+        ) : entriesQuery.isError ? (
+          <IOSListItem
+            icon={<FileText className="w-4 h-4" />}
+            iconBgColor="bg-ios-red"
+            title="Erro ao carregar"
+            subtitle={(entriesQuery.error as any)?.message ?? "Falha ao buscar dados"}
+          />
         ) : entries.length === 0 ? (
           <IOSListItem
             icon={<FileText className="w-4 h-4" />}
@@ -210,13 +217,21 @@ export function ServiceEntriesSection(props: { service: ServiceKey; showMonthFil
         isSaving={upsert.isPending}
         isDeleting={del.isPending}
         onSubmit={async (payload) => {
-          if (!userId) return;
+          if (!userId) {
+            toast({
+              title: "Você precisa estar logado",
+              description: "Sessão não encontrada. Recarregue a página e faça login novamente.",
+              variant: "destructive",
+            });
+            return;
+          }
           try {
             await upsert.mutateAsync(payload);
           } catch (e: any) {
             toast({
               title: "Não foi possível salvar",
-              description: e?.message ?? "Falha ao salvar no banco",
+              description:
+                e?.message ?? e?.details ?? e?.hint ?? e?.code ?? "Falha ao salvar no banco",
               variant: "destructive",
             });
             throw e;
