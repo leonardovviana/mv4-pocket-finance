@@ -104,6 +104,10 @@ export function ServiceEntriesSection(props: { service: ServiceKey; showMonthFil
 
   const { selectedMonth } = useMonthFilter();
 
+  // Se o usuário deixar a data vazia, usamos um valor padrão do mês selecionado
+  // para que o registro apareça na aba/mês atual.
+  const defaultEntryDate = selectedMonth ? `${selectedMonth}-01` : null;
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceEntry | null>(null);
 
@@ -213,6 +217,7 @@ export function ServiceEntriesSection(props: { service: ServiceKey; showMonthFil
         config={config}
         initial={editing}
         userId={userId ?? ""}
+        defaultEntryDate={defaultEntryDate}
         startInView={Boolean(editing)}
         isSaving={upsert.isPending}
         isDeleting={del.isPending}

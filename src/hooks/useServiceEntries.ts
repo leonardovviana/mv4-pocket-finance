@@ -19,12 +19,13 @@ function monthRange(monthKey: string) {
 
 export function useAllServiceEntries(userId?: string) {
   return useQuery({
-    queryKey: ["service_entries", "all"],
+    queryKey: ["service_entries", userId ?? "anonymous", "all"],
     enabled: Boolean(userId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("service_entries")
         .select("*")
+        .eq("user_id", userId as string)
         .order("entry_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
 
@@ -36,7 +37,7 @@ export function useAllServiceEntries(userId?: string) {
 
 export function useServiceEntries(service: ServiceKey, userId?: string, monthKey?: string) {
   return useQuery({
-    queryKey: ["service_entries", service, monthKey ?? "all"],
+    queryKey: ["service_entries", userId ?? "anonymous", service, monthKey ?? "all"],
     enabled: Boolean(userId),
     queryFn: async () => {
       const base = supabase

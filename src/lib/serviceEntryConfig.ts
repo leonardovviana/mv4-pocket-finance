@@ -75,14 +75,14 @@ export const SERVICE_ENTRY_CONFIG: Record<ServiceKey, ServiceEntryConfig> = {
   revista_saude: {
     titleLabel: "Título",
     titlePlaceholder: "Descreva o cadastro",
-    amountLabel: "Valor (opcional)",
+    amountLabel: "Valor (R$)",
     entryDateLabel: "Data (opcional)",
     extraFields: [],
   },
   servicos_variados: {
     titleLabel: "Título",
     titlePlaceholder: "Descreva o cadastro",
-    amountLabel: "Valor (opcional)",
+    amountLabel: "Valor (R$)",
     entryDateLabel: "Data (opcional)",
     extraFields: [],
   },

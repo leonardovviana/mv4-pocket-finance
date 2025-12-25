@@ -24,11 +24,10 @@ const schema = z.object({
     .refine((v) => v === "" || v === "receita" || v === "despesa", { message: "Tipo inválido" }),
   amount: z
     .string()
-    .optional()
     .transform((v) => (v ?? "").trim())
-    .refine((v) => v === "" || !Number.isNaN(Number(v.replace(/\./g, "").replace(",", "."))), {
-      message: "Valor inválido",
-    }),
+    .refine((v) => v.length > 0, { message: "Informe o valor" })
+    .refine((v) => !Number.isNaN(Number(v.replace(/\./g, "").replace(",", "."))), { message: "Valor inválido" })
+    .refine((v) => Number(v.replace(/\./g, "").replace(",", ".")) > 0, { message: "Informe um valor maior que zero" }),
   entry_date: z.string().optional(),
   status: z.string().optional(),
   paid: z.boolean().default(false),
@@ -99,6 +98,7 @@ export function ServiceEntryDialog(props: {
   config: ServiceEntryConfig;
   initial?: ServiceEntry | null;
   userId: string;
+  defaultEntryDate?: string | null;
   startInView?: boolean;
   onSubmit: (payload: {
     id?: string;
@@ -380,11 +380,17 @@ export function ServiceEntryDialog(props: {
       nextMeta.hours = hoursNumber;
     }
 
+    const effectiveEntryDate = values.entry_date
+      ? values.entry_date
+      : props.defaultEntryDate
+        ? props.defaultEntryDate
+        : null;
+
     await props.onSubmit({
       id: effectiveId,
       title: values.title,
       amount: amountNumber,
-      entry_date: values.entry_date ? values.entry_date : null,
+      entry_date: effectiveEntryDate,
       status: nextStatus,
       notes: values.notes ? values.notes : null,
       metadata: {
